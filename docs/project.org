@@ -1,0 +1,12 @@
+* Overview
+Project to count votes in a mock-election.
+
+* Rules/assumptions
+Everything is derived from LVR.
+1. "Issue" (each issue voted on)
+2. Max number of votes for each issue.
+   (1 + number of None columnns after IssueTitle)
+
+
+
+
