@@ -1,2 +1,8 @@
-venv/
 vverify.sh
+n-votes.out
+results.txt
+
+venv/
+build/
+dist/
+vvote.egg-info/

@@ -18,26 +18,31 @@ def OLD1_emit_results(votes, choices):
         for choice in sorted(choices[issue]):
             print('    "{}" = {}'.format(choice,votes[issue][choice]))
 
-def emit_results(votes, choices, n_votes, na_choice=None):
+def emit_results(votes, choices, n_votes, na_choice=None, file=sys.stdout):
     # votes[issue][choice] = count
     # choices[issue] = set([choice1, choice2,...])
     # n_votes[issue] => num-to-vote-for
-    
-    print('# Vote for N:')
+
+    # Output the number of votes allowed for each issue (to stdout)
+    print('Vote for N:')
     for k,v in n_votes.items():
-        print('# {}:\t{}'.format(v,k))
+        print('{}:\t{}'.format(v,k))
 
     for issue in sorted(choices.keys()):
-        print()
-        print(issue)
+        print(file=file)
+        print(issue, file=file)
         for choice in sorted(choices[issue]):
             if choice == na_choice:
                 n = n_votes[issue]
-                print('\t{}\t{}'.format(choice, int(votes[issue][choice]/n)))
+                print('\t{}\t{}'.format(choice, int(votes[issue][choice]/n)),
+                      file=file)
             else:
-                print('\t{}\t{}'.format(choice, votes[issue][choice]))
+                print('\t{}\t{}'.format(choice, votes[issue][choice]),
+                      file=file)
 
-def count_votes(xslx_filename, results, na_choice=' Out of District Ballots'):
+def count_votes(xslx_filename,
+                outputfile=None,
+                na_choice=' Out of District Ballots'):
     wb = load_workbook(filename=xslx_filename, read_only=True)
     ws = wb.active
     nontitles = set(['Cast Vote Record',
@@ -84,7 +89,8 @@ def count_votes(xslx_filename, results, na_choice=' Out of District Ballots'):
                     votes[issue][choice] += 1
 
     # Vote counts now in: votes
-    emit_results(votes, choices, n_votes, na_choice=na_choice)
+    emit_results(votes, choices, n_votes, na_choice=na_choice,
+                 file=outputfile)
     return votes,choices
 
 
@@ -94,7 +100,7 @@ def count_votes(xslx_filename, results, na_choice=' Out of District Ballots'):
 
 def main():
     "Parse command line arguments and do the work."
-    print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
+    #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='My shiny new python program',
         epilog='EXAMPLE: %(prog)s a b"'
@@ -103,7 +109,7 @@ def main():
     parser.add_argument('infile', type=argparse.FileType('r'),
                         help='Input file')
     parser.add_argument('outfile', type=argparse.FileType('w'),
-                        help='Output output')
+                        help='Vote count output')
 
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
@@ -113,8 +119,8 @@ def main():
     args = parser.parse_args()
     args.infile.close()
     args.infile = args.infile.name
-    args.outfile.close()
-    args.outfile = args.outfile.name
+    #args.outfile.close()
+    #args.outfile = args.outfile.name
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -123,8 +129,8 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
-
-    count_votes(args.infile, args.outfile)
+    print('Counting votes from file: "{}"'.format(args.infile))
+    count_votes(args.infile, outputfile=args.outfile)
 
 if __name__ == '__main__':
     main()
