@@ -9,71 +9,82 @@ from collections import defaultdict
 
 from openpyxl import load_workbook
 
+def OLD1_emit_results(votes, choices):
+    #print('votes={}'.format(votes))
+    # votes[issue][choice] = count
+    print("Ballot Counts:")
+    for issue in sorted(choices.keys()):
+        print('  Issue: "{}"'.format(issue))
+        for choice in sorted(choices[issue]):
+            print('    "{}" = {}'.format(choice,votes[issue][choice]))
 
-def count_votes(xslx_filename, results):
-    filename='/data/mock-election/CVR with SERIAL NUMBER.xlsx',
+def emit_results(votes, choices, n_votes, na_choice=None):
+    # votes[issue][choice] = count
+    # choices[issue] = set([choice1, choice2,...])
+    # n_votes[issue] => num-to-vote-for
+    
+    print('# Vote for N:')
+    for k,v in n_votes.items():
+        print('# {}:\t{}'.format(v,k))
+
+    for issue in sorted(choices.keys()):
+        print()
+        print(issue)
+        for choice in sorted(choices[issue]):
+            if choice == na_choice:
+                n = n_votes[issue]
+                print('\t{}\t{}'.format(choice, int(votes[issue][choice]/n)))
+            else:
+                print('\t{}\t{}'.format(choice, votes[issue][choice]))
+
+def count_votes(xslx_filename, results, na_choice=' Out of District Ballots'):
     wb = load_workbook(filename=xslx_filename, read_only=True)
     ws = wb.active
-    #wb.sheetnames  # => ['Marked Sheet']
-    #c = ws['A4']
-    #c.value        # => 98060
     nontitles = set(['Cast Vote Record',
                      'Serial Number',
                      'Precinct',
                      'Ballot Style'])
-    #titles = [c.value for c in list(ws.rows)[0]]
-    #!print('titles={}'.format(titles))
-    choices = defaultdict(set) # => choices[issue] = set([choice1, choice2,...])
-    # votes[issue][choice] = count
-    votes = defaultdict(lambda : defaultdict(int)) 
+    choices = defaultdict(set) # choices[issue] = set([choice1, choice2,...])
+    votes = defaultdict(lambda : defaultdict(int)) # votes[issue][choice] = cnt
     coltitle = dict() # coltitle[column] => issuetitle
     prevtitle = None
     ridx = 0
+    need_nvotes = True
     for row in ws.rows:
         ridx += 1
         cidx = 0
         for cell in row:
             cidx += 1
-            #!print('row={}, col={}'.format(ridx, cidx))
-            #!if cell.row == 2:
-            #!    print('cidx={},coltitle={}'
-            #!          .format(cidx, coltitle))
 
-            value = '(empty)' if (cell.value == '' or cell.value == None) else cell.value
-                
-            if ridx == 1 and value in nontitles:
+            # Ignore the (leading) columns that are not Issue Titles
+            if ridx == 1 and cell.value in nontitles:
                 continue
             
             if ridx == 1:
-                title = prevtitle if value == None else value
+                title = prevtitle if cell.value == None else cell.value
                 prevtitle = title
                 coltitle[cidx] = title
             else:
-                if cidx not in coltitle:
-                    continue
-                issue = coltitle[cidx]
-                choice = value
-                choices[issue].add(choice)
-                votes[issue][choice] += 1
+                if need_nvotes:
+                    # n_votes[issue] => num-to-vote-for
+                    n_votes = defaultdict(int) 
+                    for k,v in coltitle.items():
+                        n_votes[v] += 1
+                    need_nvotes = False
+                
+                if (cell.value == '' or cell.value == None):
+                    value = na_choice
+                else:
+                    value = cell.value
 
-    # Debug
-    #print('choices={}'.format(choices))
-    #!print("Ballot Choices Used:")
-    #!for issue,choices in choices.items():
-    #!    print('  Issue: "{}"'.format(issue))
-    #!    print('    Choices:')
-    #!    for choice in choices:
-    #!        print('  "{}"'.format(choice))
-    #!print()
+                if cidx in coltitle:
+                    issue = coltitle[cidx]
+                    choice = value
+                    choices[issue].add(choice)
+                    votes[issue][choice] += 1
 
-    # votes[issue][choice] = count
-    #print('votes={}'.format(votes))
-    print("Ballot Counts:")
-    for issue in sorted(choices.keys()):
-        print('  Issue: "{}"'.format(issue))
-        for choice in sorted(choices[issue]):
-            print('    "{} = {}'.format(choice,votes[issue][choice]))
-
+    # Vote counts now in: votes
+    emit_results(votes, choices, n_votes, na_choice=na_choice)
     return votes,choices
 
 
@@ -100,11 +111,10 @@ def main():
                                  'INFO', 'DEBUG'],
                         default='WARNING')
     args = parser.parse_args()
-    #!args.outfile.close()
-    #!args.outfile = args.outfile.name
-
-    #!print 'My args=',args
-    #!print 'infile=',args.infile
+    args.infile.close()
+    args.infile = args.infile.name
+    args.outfile.close()
+    args.outfile = args.outfile.name
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
