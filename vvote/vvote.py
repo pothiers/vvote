@@ -18,7 +18,9 @@ def OLD1_emit_results(votes, choices):
         for choice in sorted(choices[issue]):
             print('    "{}" = {}'.format(choice,votes[issue][choice]))
 
-def emit_results(votes, choices, n_votes, na_choice=None, file=sys.stdout):
+def emit_results(votes, choices, n_votes,
+                 orderedissues=None,
+                 na_choice=None, file=sys.stdout):
     # votes[issue][choice] = count
     # choices[issue] = set([choice1, choice2,...])
     # n_votes[issue] => num-to-vote-for
@@ -28,10 +30,10 @@ def emit_results(votes, choices, n_votes, na_choice=None, file=sys.stdout):
     for k,v in n_votes.items():
         print('{}:\t{}'.format(v,k))
 
-    for issue in sorted(choices.keys()):
+    for issue in orderedissues:
         print(file=file)
         print(issue, file=file)
-        for choice in sorted(choices[issue]):
+        for choice in choices[issue]:
             if choice == na_choice:
                 n = n_votes[issue]
                 print('\t{}\t{}'.format(choice, int(votes[issue][choice]/n)),
@@ -52,6 +54,7 @@ def count_votes(xslx_filename,
     choices = defaultdict(set) # choices[issue] = set([choice1, choice2,...])
     votes = defaultdict(lambda : defaultdict(int)) # votes[issue][choice] = cnt
     coltitle = dict() # coltitle[column] => issuetitle
+    orderedissues = list()
     prevtitle = None
     ridx = 0
     need_nvotes = True
@@ -66,7 +69,12 @@ def count_votes(xslx_filename,
                 continue
             
             if ridx == 1:
-                title = prevtitle if cell.value == None else cell.value
+                if cell.value == None:
+                    title = prevtitle
+                else:
+                    title = cell.value
+                    orderedissues.append(title)
+
                 prevtitle = title
                 coltitle[cidx] = title
             else:
@@ -90,6 +98,7 @@ def count_votes(xslx_filename,
 
     # Vote counts now in: votes
     emit_results(votes, choices, n_votes, na_choice=na_choice,
+                 orderedissues=orderedissues,
                  file=outputfile)
     return votes,choices
 
