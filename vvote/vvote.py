@@ -8,6 +8,7 @@ import logging
 from collections import defaultdict
 
 from openpyxl import load_workbook
+from openpyxl import Workbook
 
 def OLD1_emit_results(votes, choices):
     #print('votes={}'.format(votes))
@@ -18,9 +19,11 @@ def OLD1_emit_results(votes, choices):
         for choice in sorted(choices[race]):
             print('    "{}" = {}'.format(choice,votes[race][choice]))
 
+
 def emit_results(votes, choices, n_votes,
                  orderedraces=None,
-                 na_tag=None, file=sys.stdout):
+                 na_tag='<OOD>', # Out of District Ballots
+                 outputfile = None):
     # votes[race][choice] = count
     # choices[race] = set([choice1, choice2,...])
     # n_votes[race] => num-to-vote-for
@@ -29,6 +32,11 @@ def emit_results(votes, choices, n_votes,
     #! print('Vote for N:')
     #! for k,v in n_votes.items():
     #!     print('{}:\t{}'.format(v,k))
+
+    if outputfile == None:
+        file=sys.stdout
+    else:
+        file = open(outputfile, mode='w')
 
     for race in orderedraces:
         print(file=file)
@@ -41,6 +49,50 @@ def emit_results(votes, choices, n_votes,
             else:
                 print('\t{}\t{}'.format(choice, votes[race][choice]),
                       file=file)
+    file.close()
+    
+def write_sovc(votes, choices, n_votes, sovcfilename,
+                 orderedraces=None,
+                 na_tag='<OOD>'):
+    # votes[race][choice] = count
+    # choices[race] = set([choice1, choice2,...])
+    # n_votes[race] => num-to-vote-for
+
+    # Row 1:: Race titles (merged over columns representing choices)
+    # Row 2:: party (leave blank, we do not know)
+    # Row 3:: Choices
+    # Row 4:: Grand totals (County totals)
+
+    wb = Workbook()
+    ws = wb.active
+
+    # Races
+    ws['A1'] = 'COUNTY NUMBER'
+    ws['B1'] = 'PRECINCT CODE'
+    ws['C1'] = 'PRECINCT NAME'
+    ws['D1'] = 'REGISTERED VOTERS - TOTAL'
+    ws['E1'] = 'BALLOTS CAST - TOTAL'
+    ws['F1'] = 'BALLOTS CAST - BLANK'
+    # G1 ... :: Races (duplicated for each choice of same race)
+
+    # Choices
+    ws['D3'] = 'VOTERS'
+    ws['E3'] = 'BALLOTS CAST'
+    ws['F3'] = 'BALLOTS CAST'
+    # G3 ... :: Candidates
+
+    ws['B4'] = 'ZZZ'
+    ws['C4'] = 'COUNTY TOTALS'
+    ws['A5'] = '_x001A_'
+
+    col = 7
+    for race in orderedraces:
+        for choice in choices[race]:
+            ws.cell(column=col, row=1, value="{}".format(race))
+            ws.cell(column=col, row=3, value="{}".format(choice))
+            ws.cell(column=col, row=4, value="{}".format(votes[race][choice]))
+            col += 1
+    wb.save(sovcfilename)
 
 def count_votes(xslx_filename,
                 outputfile=None,
@@ -121,12 +173,8 @@ def count_votes(xslx_filename,
                         votes[race][choice] += 1
                     raceballot = list() # single ballot for single race
 
-    # Vote counts now in: votes
-    emit_results(votes, choices, n_votes, na_tag=na_tag,
-                 orderedraces=orderedraces,
-                 file=outputfile)
     print('Processed {} ballots'.format(ridx-1))
-    return votes,choices
+    return votes, choices, n_votes, orderedraces
 
 
 
@@ -146,6 +194,10 @@ def main():
     parser.add_argument('outfile', type=argparse.FileType('w'),
                         help='Vote count output')
 
+    parser.add_argument('-f', '--format',
+                        help='Format of output file',
+                        choices=['text', 'SOVC'],
+                        default='text')
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
                         choices=['CRTICAL', 'ERROR', 'WARNING',
@@ -154,8 +206,8 @@ def main():
     args = parser.parse_args()
     args.infile.close()
     args.infile = args.infile.name
-    #args.outfile.close()
-    #args.outfile = args.outfile.name
+    args.outfile.close()
+    args.outfile = args.outfile.name
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -165,7 +217,17 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
     print('Counting votes from file: "{}"'.format(args.infile))
-    count_votes(args.infile, outputfile=args.outfile)
+    votes, choices, n_votes, races = count_votes(args.infile,)
+    # Vote counts now in: votes
+    if args.format == 'text':
+        emit_results(votes, choices, n_votes, 
+                     orderedraces=races,
+                     outputfile=args.outfile )
+    elif args.format == 'SOVC':
+        write_sovc(votes, choices, n_votes, args.outfile,
+                   orderedraces=races)
+        
+
 
 if __name__ == '__main__':
     main()
