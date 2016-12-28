@@ -9,6 +9,10 @@ from collections import defaultdict
 
 from openpyxl import load_workbook
 from openpyxl import Workbook
+from . import sovc
+
+def compare_sovc(votes, choices, n_votes):
+    pass
 
 def OLD1_emit_results(votes, choices):
     #print('votes={}'.format(votes))
@@ -93,6 +97,8 @@ def write_sovc(votes, choices, n_votes, sovcfilename,
             ws.cell(column=col, row=4, value="{}".format(votes[race][choice]))
             col += 1
     wb.save(sovcfilename)
+    sovc.transpose(sovcfilename, 'transpose.{}'.format(sovcfilename))
+
 
 def count_votes(xslx_filename,
                 outputfile=None,
@@ -185,15 +191,19 @@ def main():
     "Parse command line arguments and do the work."
     #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        description='My shiny new python program',
-        epilog='EXAMPLE: %(prog)s a b"'
+        description='Count ballots.',
+        epilog='EXAMPLE: %(prog)s day-6-cvr.xlsx"'
         )
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('infile', type=argparse.FileType('r'),
                         help='Input file')
     parser.add_argument('outfile', type=argparse.FileType('w'),
-                        help='Vote count output')
+                        help='Vote count output (SOVC equiv)')
 
+    parser.add_argument('-s', '--sovc', type=argparse.FileType('r'),
+                        help=('Name of SOVC (xslx) file to compare to results.'
+                              '(No comparison done if not given.)'),
+                        )
     parser.add_argument('-f', '--format',
                         help='Format of output file',
                         choices=['text', 'SOVC'],
@@ -208,6 +218,8 @@ def main():
     args.infile = args.infile.name
     args.outfile.close()
     args.outfile = args.outfile.name
+    args.sovc.close()
+    args.sovc = args.sovc.name
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -227,7 +239,8 @@ def main():
         write_sovc(votes, choices, n_votes, args.outfile,
                    orderedraces=races)
         
-
+    if sovc:
+        compare_sovc(votes, choices, n_votes)
 
 if __name__ == '__main__':
     main()

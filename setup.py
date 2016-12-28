@@ -88,6 +88,8 @@ setup(
     entry_points={
         'console_scripts': [
             'countvote=vvote.vvote:main',
+            'sovc=vvote.sovc:main',
+            'transpose=vvote.transpose:main',
         ],
     },
 )
