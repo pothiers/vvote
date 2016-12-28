@@ -66,6 +66,10 @@ def main():
     #!parser.add_argument('outfile', type=argparse.FileType('w'),
     #!                    help='Vote count output')
 
+    parser.add_argument('--csv',
+                        action='store_true',
+                        help='Write Excel to CSV file')
+
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
                         choices=['CRTICAL', 'ERROR', 'WARNING',

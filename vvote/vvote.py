@@ -11,8 +11,23 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 from . import sovc
 
-def compare_sovc(votes, choices, n_votes):
-    pass
+def compare_sovc(sovcfile, votes, choices, n_votes):
+    print('Comparing calculated vote counts to those from {}'.format(sovcfile))
+    totdict = sovc.get_totals(sovcfile)
+    for (race,choice),sovccount in totdict.items():
+        if race not in votes:
+            print('ERROR: Calc votes do not contain race "{}"'.format(race))
+            continue
+        if choice not in votes[race]:
+            print('ERROR: Calc votes do not contain choice "{}" in race "{}"'
+                  .format(choice, race))
+            continue
+        if votes[race][choice] != sovccount:
+            print('ERROR: vote counts do not agree for {}. sovc={}, calc={}'
+                  .format((race,choice),
+                          totdict[(race,choice)],
+                          votes[race][choice]
+                  ))
 
 def OLD1_emit_results(votes, choices):
     #print('votes={}'.format(votes))
@@ -101,7 +116,8 @@ def write_sovc(votes, choices, n_votes, sovcfilename,
 
 
 def count_votes(xslx_filename,
-                outputfile=None,
+                verbose=False,
+                nrows = 10000, # progress every N rows iff verbose==True
                 na_tag='<OOD>', # Out of District Ballots
                 writeintag='Write-in',
                 overvotetag='overvote',
@@ -124,6 +140,9 @@ def count_votes(xslx_filename,
         ridx += 1
         cidx = 0
         raceballot = list() # single ballot for single race
+        if verbose:
+            if (ridx % nrows) == 0:
+                print('# processed {} ballots'.format(ridx))
         for cell in row:
             cidx += 1
 
@@ -192,7 +211,8 @@ def main():
     #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='Count ballots.',
-        epilog='EXAMPLE: %(prog)s day-6-cvr.xlsx"'
+        epilog='EXAMPLE: %(prog)s --verbose --sovc /data/mock-election/G2016_EXPORT1.xlsx /data/mock-election/day-1-cvr.xlsx results1.txt'
+        #  (49418 ballots)
         )
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('infile', type=argparse.FileType('r'),
@@ -208,6 +228,10 @@ def main():
                         help='Format of output file',
                         choices=['text', 'SOVC'],
                         default='text')
+    parser.add_argument('-v', '--verbose',
+                        action='store_true',
+                        help='Output progress')
+
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
                         choices=['CRTICAL', 'ERROR', 'WARNING',
@@ -218,8 +242,9 @@ def main():
     args.infile = args.infile.name
     args.outfile.close()
     args.outfile = args.outfile.name
-    args.sovc.close()
-    args.sovc = args.sovc.name
+    if args.sovc:
+        args.sovc.close()
+        args.sovc = args.sovc.name
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -229,7 +254,8 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
     print('Counting votes from file: "{}"'.format(args.infile))
-    votes, choices, n_votes, races = count_votes(args.infile,)
+    votes, choices, n_votes, races = count_votes(args.infile,
+                                                 verbose=args.verbose)
     # Vote counts now in: votes
     if args.format == 'text':
         emit_results(votes, choices, n_votes, 
@@ -240,7 +266,7 @@ def main():
                    orderedraces=races)
         
     if sovc:
-        compare_sovc(votes, choices, n_votes)
+        compare_sovc(args.sovc, votes, choices, n_votes)
 
 if __name__ == '__main__':
     main()
