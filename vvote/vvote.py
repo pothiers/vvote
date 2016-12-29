@@ -11,22 +11,32 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 from . import sovc
 
+
+sovc2ballot = {
+    'WRITE-IN': 'Write-in',
+    'OVER VOTES': 'overvote',
+    'UNDER VOTES': 'undervote',
+    }
+
 def compare_sovc(sovcfile, votes, choices, n_votes):
     print('Comparing calculated vote counts to those from {}'.format(sovcfile))
     totdict = sovc.get_totals(sovcfile)
     for (race,choice),sovccount in totdict.items():
+        # convert SOVC strings to Ballot strings
+        bchoice = choice if choice not in sovc2ballot else sovc2ballot[choice]
+
         if race not in votes:
             print('ERROR: Calc votes do not contain race "{}"'.format(race))
             continue
-        if choice not in votes[race]:
+        if bchoice not in votes[race]:
             print('ERROR: Calc votes do not contain choice "{}" in race "{}"'
-                  .format(choice, race))
+                  .format(bchoice, race))
             continue
-        if votes[race][choice] != sovccount:
+        if votes[race][bchoice] != sovccount:
             print('ERROR: vote counts do not agree for {}. sovc={}, calc={}'
                   .format((race,choice),
-                          totdict[(race,choice)],
-                          votes[race][choice]
+                          sovcount,
+                          votes[race][bchoice]
                   ))
 
 def OLD1_emit_results(votes, choices):
@@ -115,6 +125,14 @@ def write_sovc(votes, choices, n_votes, sovcfilename,
     sovc.transpose(sovcfilename, 'transpose.{}'.format(sovcfilename))
 
 
+def clean_choice(choice):
+    "Systemic fix to strings given as choices in BALLOTS"
+    if choice[:4] == 'DEM ':
+        return choice[4:]
+    if choice[:4] == 'REP ':
+        return choice[4:]
+    return choice
+    
 def count_votes(xslx_filename,
                 verbose=False,
                 nrows = 10000, # progress every N rows iff verbose==True
@@ -168,7 +186,7 @@ def count_votes(xslx_filename,
                 if (cell.value == '' or cell.value == None):
                     choice = na_tag
                 else:
-                    choice = cell.value
+                    choice = clean_choice(cell.value)
                 race = coltitle[cidx]
                 next_race = coltitle[cidx+1] if cidx < ws.max_column else None
                 raceballot.append(choice)
@@ -192,7 +210,9 @@ def count_votes(xslx_filename,
                                   )]
                     #! if len(raceballot) != len(set(raceballot)):
                     #!     print('raceballot[{}]={}'.format(ridx,raceballot))
-                    assert len(raceballot) == len(set(raceballot)) # no dupes
+                    # no dupes
+                    assert len(raceballot) == len(set(raceballot)), 'Duplicates in: {}'.format(raceballot)
+    
                     for choice in set(raceballot):
                         choices[race].add(choice)
                         votes[race][choice] += 1

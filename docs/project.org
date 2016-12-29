@@ -43,3 +43,5 @@ We use the [[https://help.github.com/articles/what-is-a-good-git-workflow/][GitH
 7. After merged and pushed to master, deploy immediately
 
 
+* Regression test
+: tests/smoke/smoke.all.sh
