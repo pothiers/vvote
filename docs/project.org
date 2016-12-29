@@ -30,4 +30,16 @@ OPTIONS
 + --verbose :: Output progress as ballots processed.
   
 
-* Release Process
+* TODO Release Work-Flow Overview 
+# Can we use Jenkins (automation server, builds); Continuous Integration 
+
+We use the [[https://help.github.com/articles/what-is-a-good-git-workflow/][GitHub flow]] for release management and deployment.
+
+1. Create a new descriptive branch
+2. Create, edit, rename, move, or delete files.
+3. Commit to that branch locally and regularly push to remote server
+4. (when more than one developer) open a pull request when ready for merging
+5. After review and sign-off on feature, merge to master
+7. After merged and pushed to master, deploy immediately
+
+
