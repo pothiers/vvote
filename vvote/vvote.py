@@ -60,7 +60,7 @@ def emit_results(votes, choices, n_votes,
     for race in orderedraces:
         print(file=file)
         print(race, file=file)
-        for choice in choices[race]:
+        for choice in sorted(choices[race]):
             if choice == na_tag:
                 n = n_votes[race]
                 print('\t{}\t{}'.format(choice, int(votes[race][choice]/n)),
@@ -225,7 +225,7 @@ def main():
                               '(No comparison done if not given.)'),
                         )
     parser.add_argument('-f', '--format',
-                        help='Format of output file',
+                        help='Format of output file.',
                         choices=['text', 'SOVC'],
                         default='text')
     parser.add_argument('-v', '--verbose',
@@ -253,7 +253,7 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
-    print('Counting votes from file: "{}"'.format(args.infile))
+    print('# Counting votes from file: {}'.format(args.infile))
     votes, choices, n_votes, races = count_votes(args.infile,
                                                  verbose=args.verbose)
     # Vote counts now in: votes
@@ -265,7 +265,7 @@ def main():
         write_sovc(votes, choices, n_votes, args.outfile,
                    orderedraces=races)
         
-    if sovc:
+    if args.sovc:
         compare_sovc(args.sovc, votes, choices, n_votes)
 
 if __name__ == '__main__':

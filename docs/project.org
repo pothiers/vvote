@@ -9,4 +9,25 @@ Everything is derived from LVR.
 
 
 
+* As implemented <2016-12-28 Wed>
+Each program supports a ~--help~ option which should be used to get
+usage summary.  More details are given in this section
 
+** countvote
+
+Arguments:
++ infile :: Excel (.xslx) file containing ballots
++ outfile :: Vote counts (see --format option)
+
+OPTIONS
++ --format :: used to select output format.  Currently allowed: 
+  - text :: Human readable, pure text
+  - SOVC :: Statement Of Votes Cast format like official election
+       results. Excel file type.
++ --sovc :: Compare results to official election results. Value is
+     name of SOVC Excel (.xslx) file.  If not given, comparision will
+     not be done.
++ --verbose :: Output progress as ballots processed.
+  
+
+* Release Process

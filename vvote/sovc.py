@@ -25,6 +25,8 @@ def transpose(in_xslx, out_xslx):
     wb2.save(filename=out_xslx)        
 
 def get_totals(xslx_filename):
+    "RETURN: dict[(race,choice)] => count"
+    
     # Row 1:: Race titles (duplicated over columns representing choices)
     # Row 2:: party (we don't care)
     # Row 3:: Choices
