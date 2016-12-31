@@ -45,8 +45,10 @@ def get_totals(xslx_filename):
     ws = wb.active
     totalsrow = ws.max_row - 1
     assert ws.cell(row=totalsrow, column=3).value == 'COUNTY TOTALS'
-    races = [ws.cell(row=1,column=c).value for c in range(4,ws.max_column+1)]
-    choices = [ws.cell(row=3,column=c).value for c in range(4,ws.max_column+1)]
+    races = [ws.cell(row=1,column=c).value.strip()
+             for c in range(4,ws.max_column+1)]
+    choices = [ws.cell(row=3,column=c).value.strip()
+               for c in range(4,ws.max_column+1)]
     totals = [ws.cell(row=totalsrow,column=c).value
               for c in range(4,ws.max_column+1)]
     racechoice = zip(races,choices)

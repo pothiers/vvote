@@ -12,42 +12,53 @@ from openpyxl import Workbook
 from . import sovc
 
 
-sovc2ballot = {
-    'WRITE-IN': 'Write-in',
-    'OVER VOTES': 'overvote',
-    'UNDER VOTES': 'undervote',
+ballot2sovc = {
+    #Ballot, SOVC
+    'Write-in': 'WRITE-IN',
+    'overvote': 'OVER VOTES',
+    'undervote': 'UNDER VOTES',
+    'YES/SÍ': 'YES/SI' ,
+    'PRESIDENTIAL ELECTOR': 'PRESIDENTIAL ELECTORS',
+    'U.S. SENATOR': 'UNITED STATES SENATOR',
     }
+
+def revlut(lut):
+    "RETURN: new dict[a] => b from dict[b] => a"
+    newlut = dict()
+    for k,v in lut.items():
+        newlut[v] = k
+    return newlut
+
+sovc2ballot = revlut(ballot2sovc)
 
 def compare_sovc(sovcfile, votes, choices, n_votes):
     print('Comparing calculated vote counts to those from {}'.format(sovcfile))
     totdict = sovc.get_totals(sovcfile)
-    for (race,choice),sovccount in totdict.items():
-        # convert SOVC strings to Ballot strings
-        bchoice = choice if choice not in sovc2ballot else sovc2ballot[choice]
+    sovcraces = set([sovc2ballot.get(race,race)
+                     for race,choice in totdict.keys()])
+    balraces = set(votes.keys())
 
-        if race not in votes:
-            print('ERROR: Calc votes do not contain race "{}"'.format(race))
-            continue
-        if bchoice not in votes[race]:
-            print('ERROR: Calc votes do not contain choice "{}" in race "{}"'
-                  .format(bchoice, race))
-            continue
-        if votes[race][bchoice] != sovccount:
-            print('ERROR: vote counts do not agree for {}. sovc={}, calc={}'
-                  .format((race,choice),
-                          sovcount,
-                          votes[race][bchoice]
-                  ))
-
-def OLD1_emit_results(votes, choices):
-    #print('votes={}'.format(votes))
-    # votes[race][choice] = count
-    print("Ballot Counts:")
-    for race in sorted(choices.keys()):
-        print('  Race: "{}"'.format(race))
-        for choice in sorted(choices[race]):
-            print('    "{}" = {}'.format(choice,votes[race][choice]))
-
+    for race in sovcraces - balraces:
+            print('ERROR: Ballot votes do not contain race "{}".'.format(race))
+    for race in balraces - sovcraces:
+            print('ERROR: SOVC votes do not contain race "{}".'.format(race))
+        
+    for race in sovcraces & balraces:
+        sovcchoices = set([sovc2ballot.get(choice,choice)
+                           for r,choice in totdict.keys() if r == race])
+        balchoices = set(choices[race])
+        for choice in sovcchoices - balchoices:
+            print('ERROR: Ballot choices for race "{}" do not contain "{}".'
+                  .format(race, choice))
+        for choice in balchoices - sovcchoices :
+            print('ERROR: SOVC choices for race "{}" do not contain "{}".'
+                  .format(race, choice))
+        for choice in sovcchoices & balchoices :
+            sovccount = totdict[(ballot2sovc.get(race,race),
+                                 ballot2sovc.get(choice,choice))]
+            if votes[race][choice] != sovccount:
+                print('ERROR: vote counts do not agree for {}. sovc={}, calc={}'
+                      .format((race,choice), sovccount, votes[race][choice] ))
 
 def emit_results(votes, choices, n_votes,
                  orderedraces=None,
@@ -131,7 +142,7 @@ def clean_choice(choice):
         return choice[4:]
     if choice[:4] == 'REP ':
         return choice[4:]
-    return choice
+    return choice.strip()
     
 def count_votes(xslx_filename,
                 verbose=False,
@@ -170,11 +181,12 @@ def count_votes(xslx_filename,
             
             if ridx == 1: # header
                 if cell.value != None:
-                    race = cell.value
+                    race = cell.value.strip()
                     orderedraces.append(race)
                     n_votes[race] = 1
                     choices[race].add(undervotetag)
                     choices[race].add(overvotetag)
+                    choices[race].add(writeintag)
                     choices[race].add(na_tag)
                 else: # vote-for-N race
                     n_votes[race] += 1
@@ -202,14 +214,16 @@ def count_votes(xslx_filename,
                     if na_tag in raceballot:
                         assert raceballot.count(na_tag) == n_votes[race]
                         votes[race][na_tag] += 1
+                    for c in raceballot:
+                        if c == writeintag:
+                            choices[race].add(c)
+                            votes[race][c] += 1                            
                     raceballot = [c for c in raceballot
                                   if ((c != undervotetag)
                                       and (c != overvotetag)
                                       and (c != na_tag)
                                       and (c != writeintag)
                                   )]
-                    #! if len(raceballot) != len(set(raceballot)):
-                    #!     print('raceballot[{}]={}'.format(ridx,raceballot))
                     # no dupes
                     assert len(raceballot) == len(set(raceballot)), 'Duplicates in: {}'.format(raceballot)
     
