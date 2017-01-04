@@ -1,6 +1,6 @@
 vverify.sh
-n-votes.out
-results.txt
+tt.sh
+foo.*
 
 venv/
 build/
