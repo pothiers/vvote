@@ -60,18 +60,13 @@ def compare_sovc(sovcfile, votes, choices, n_votes):
                 print('ERROR: vote counts do not agree for {}. sovc={}, calc={}'
                       .format((race,choice), sovccount, votes[race][choice] ))
 
-def emit_results(votes, choices, n_votes,
+def emit_results(votes, choices, n_votes, num_ballots,
                  orderedraces=None,
                  na_tag='<OOD>', # Out of District Ballots
                  outputfile = None):
     # votes[race][choice] = count
     # choices[race] = set([choice1, choice2,...])
     # n_votes[race] => num-to-vote-for
-
-    # Output the number of votes allowed for each race (to stdout)
-    #! print('Vote for N:')
-    #! for k,v in n_votes.items():
-    #!     print('{}:\t{}'.format(v,k))
 
     if outputfile == None:
         file=sys.stdout
@@ -80,15 +75,23 @@ def emit_results(votes, choices, n_votes,
 
     for race in orderedraces:
         print(file=file)
-        print(race, file=file)
-        for choice in sorted(choices[race]):
-            if choice == na_tag:
-                n = n_votes[race]
-                print('\t{}\t{}'.format(choice, int(votes[race][choice]/n)),
+        print("{} (vote for {})".format(race, n_votes[race]), file=file)
+        #for choice in sorted(choices[race]):
+        special = set([k for k in votes[race].keys()
+                       if k[:10] == 'undervote'])
+        for choice in sorted(set(votes[race].keys()) - special):
+            #!if choice == na_tag:
+            #!    n = n_votes[race]
+            #!    print('\t{}\t{}'.format(choice, int(votes[race][choice]/n)),
+            #!          file=file)
+            if choice != na_tag:
+                print('\t{:10d}\t{}'.format(votes[race][choice], choice),
                       file=file)
-            else:
-                print('\t{}\t{}'.format(choice, votes[race][choice]),
-                      file=file)
+        print('\t{:10d}\t{}'.format(num_ballots - votes[race][na_tag],
+                                'IN-DISTRICT'),
+              file=file)
+        print('\t{:10d}\t{}'.format(votes[race][na_tag], 'OUT-OF-DISTRICT'),
+              file=file)
     file.close()
     
 def write_sovc(votes, choices, n_votes, sovcfilename,
@@ -184,7 +187,6 @@ def count_votes(xslx_filename,
                     race = cell.value.strip()
                     orderedraces.append(race)
                     n_votes[race] = 1
-                    choices[race].add(undervotetag)
                     choices[race].add(overvotetag)
                     choices[race].add(writeintag)
                     choices[race].add(na_tag)
@@ -208,9 +210,10 @@ def count_votes(xslx_filename,
                         undervote_m = ('undervote-{}'
                                        .format(raceballot.count(undervotetag)))
                         votes[race][undervote_m] += 1
+                        choices[race].add(undervote_m)
                     if overvotetag in raceballot:
                         assert raceballot.count(overvotetag) == n_votes[race]
-                        votes[race][undervotetag] += 1
+                        votes[race][overvotetag] += 1
                     if na_tag in raceballot:
                         assert raceballot.count(na_tag) == n_votes[race]
                         votes[race][na_tag] += 1
@@ -232,8 +235,9 @@ def count_votes(xslx_filename,
                         votes[race][choice] += 1
                     raceballot = list() # single ballot for single race
 
-    print('Processed {} ballots'.format(ridx-1))
-    return votes, choices, n_votes, orderedraces
+    nballots = ridx-1
+    print('Processed {} ballots'.format(nballots))
+    return votes, choices, n_votes, nballots, orderedraces
 
 
 
@@ -288,11 +292,11 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
     print('# Counting votes from file: {}'.format(args.infile))
-    votes, choices, n_votes, races = count_votes(args.infile,
-                                                 verbose=args.verbose)
+    votes, choices, n_votes, nballots, races = count_votes(args.infile,
+                                                           verbose=args.verbose)
     # Vote counts now in: votes
     if args.format == 'text':
-        emit_results(votes, choices, n_votes, 
+        emit_results(votes, choices, n_votes, nballots,
                      orderedraces=races,
                      outputfile=args.outfile )
     elif args.format == 'SOVC':
