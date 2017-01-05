@@ -303,7 +303,7 @@ def main():
         write_sovc(votes, choices, n_votes, args.outfile,
                    orderedraces=races)
         
-    if args.sovc:
+    if args.sovc != None:
         compare_sovc(args.sovc, votes, choices, n_votes)
 
 if __name__ == '__main__':

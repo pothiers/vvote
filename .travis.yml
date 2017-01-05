@@ -1,7 +1,8 @@
 language: python
 python:
-  - "3.5"
-  - "nightly" # currently points to 3.7-dev
+  - 2.7
+  - 3.5
+  - nightly
 before_install:
   - mkdir -p $HOME/bin
   - wget https://github.com/github/git-lfs/releases/download/v1.1.2/git-lfs-linux-amd64-1.1.2.tar.gz
