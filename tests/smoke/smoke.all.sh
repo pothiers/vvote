@@ -14,6 +14,8 @@ origdir=`pwd`
 cd $dir
 
 source smoke-lib.sh
+sto=$dir
+
 return_code=0
 SMOKEOUT="README-smoke-results.txt"
 
