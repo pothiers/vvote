@@ -25,7 +25,7 @@ echo ""
 # almost 40k ballots; mock1.xlsx
 results1="$sto/mock1-results.out"
 testCommand vv0_1 "countvote $data/mock1.xlsx $results1" "^\#" y
-testOutput vv0_1_out $results1 '^\#' n
+testOutput vv0_1_out $results1 '^\#' y
 
 ###########################################
 #echo "WARNING: ignoring remainder of tests"
