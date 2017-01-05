@@ -8,12 +8,12 @@
 
 cmd=`basename $0`
 SCRIPT=$(readlink -e $0)     #Absolute path to this script
-dir=$(dirname $SCRIPT) #Absolute path this script is in
+dir=$(dirname $SCRIPT)       #Absolute path this script is in
 data="$(dirname $dir)/data"
 origdir=`pwd`
 cd $dir
-
 source smoke-lib.sh
+cd $dir
 sto=$dir
 
 return_code=0
