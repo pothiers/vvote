@@ -22,25 +22,25 @@ echo "Starting tests in \"$dir\" ..."
 echo ""
 echo ""
 
-# mock1.xlsx
+# almost 40k ballots; mock1.xlsx
 results1="$sto/mock1-results.out"
 testCommand vv0_1 "countvote $data/mock1.xlsx $results1" "^\#" y
 testOutput vv0_1_out $results1 '^\#' n
 
 ###########################################
-echo "WARNING: ignoring remainder of tests"
-exit $return_code
+#echo "WARNING: ignoring remainder of tests"
+#exit $return_code
 ###########################################
 
-# almost 50k ballots; time = 60 sec
-results1="$sto/day1-results.out"
-testCommand vv1_1 "countvote $data/day-1-cvr.xlsx $results1" "^\#" y
-testOutput out $results1 '^\#' n
-
-sovc=$data/G2016_EXPORT1.xlsx
-ballots=$data/day-1-cvr.xlsx
-testCommand vv2_1 "countvote --verbose --sovc $sovc $ballots $results1.txt"
-
+#! # almost 50k ballots; time = 60 sec
+#! results1="$sto/day1-results.out"
+#! testCommand vv1_1 "countvote $data/day-1-cvr.xlsx $results1" "^\#" y
+#! testOutput out $results1 '^\#' n
+#! 
+#! sovc=$data/G2016_EXPORT1.xlsx
+#! ballots=$data/day-1-cvr.xlsx
+#! testCommand vv2_1 "countvote --verbose --sovc $sovc $ballots $results1.txt"
+#! 
 
 
 ##############################################################################
