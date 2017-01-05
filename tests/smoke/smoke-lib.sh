@@ -16,8 +16,9 @@
 # AUTHORS:    S. Pothier
 ########################################################################
 
-sto="$HOME/.smoke-test-output"
-mkdir -p $sto > /dev/null
+#! sto="$HOME/.smoke-test-output"
+#! mkdir -p $sto > /dev/null
+sto=`pwd`
 
 # Default counters if something didn't previously set them
 x=${failcnt:=0} # TADA smoke tests
