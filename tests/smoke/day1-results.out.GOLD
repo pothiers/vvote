@@ -1,104 +1,104 @@
 
 PRESIDENTIAL ELECTOR (vote for 1)
-	     29454	CLINTON
+	     29454	DEM CLINTON
 	       585	GRN STEIN
 	      1479	LBT JOHNSON
-	     16922	TRUMP
+	     16922	REP TRUMP
 	       597	Write-in
 	       381	undervote-1
 	     49418	IN-DISTRICT
 	         0	OUT-OF-DISTRICT
 
 U.S. SENATOR (vote for 1)
+	     27567	DEM KIRKPATRICK, ANN
 	      2391	GRN SWING, GARY
-	     27567	KIRKPATRICK, ANN
-	     17708	MCCAIN, JOHN
+	     17708	REP MCCAIN, JOHN
 	       277	Write-in
 	      1475	undervote-1
 	     49418	IN-DISTRICT
 	         0	OUT-OF-DISTRICT
 
 U.S. REPRESENTATIVE IN CONGRESS, DIST. 1 (vote for 1)
-	      2691	BABEU, PAUL
+	      3274	DEM O'HALLERAN, TOM
 	       212	GRN PARRISH, RAY
-	      3274	O'HALLERAN, TOM
+	      2691	REP BABEU, PAUL
 	         5	Write-in
 	       262	undervote-1
 	      6444	IN-DISTRICT
 	     42974	OUT-OF-DISTRICT
 
 U.S. REPRESENTATIVE IN CONGRESS, DIST. 2 (vote for 1)
-	     18096	HEINZ, MATT
-	     14504	MCSALLY, MARTHA
+	     18096	DEM HEINZ, MATT
+	     14504	REP MCSALLY, MARTHA
 	        59	Write-in
 	       788	undervote-1
 	     33447	IN-DISTRICT
 	     15971	OUT-OF-DISTRICT
 
 U.S. REPRESENTATIVE IN CONGRESS, DIST. 3 (vote for 1)
-	      6957	GRIJALVA, RAÚL
+	      6957	DEM GRIJALVA, RAÚL
 	       591	Write-in
 	      1979	undervote-1
 	      9527	IN-DISTRICT
 	     39891	OUT-OF-DISTRICT
 
 STATE SENATOR, DIST. 2 (vote for 1)
-	      3723	DALESSANDRO, ANDREA
-	      2466	KAIS, SHELLEY
+	      3723	DEM DALESSANDRO, ANDREA
+	      2466	REP KAIS, SHELLEY
 	        16	Write-in
 	       247	undervote-1
 	      6452	IN-DISTRICT
 	     42966	OUT-OF-DISTRICT
 
 STATE SENATOR, DIST. 3 (vote for 1)
-	      5459	CAJERO BEDFORD, OLIVIA
+	      5459	DEM CAJERO BEDFORD, OLIVIA
 	       181	Write-in
 	      1426	undervote-1
 	      7066	IN-DISTRICT
 	     42352	OUT-OF-DISTRICT
 
 STATE SENATOR, DIST. 4 (vote for 1)
-	       479	OTONDO, LISA
+	       479	DEM OTONDO, LISA
 	        16	Write-in
 	       140	undervote-1
 	       635	IN-DISTRICT
 	     48783	OUT-OF-DISTRICT
 
 STATE SENATOR, DIST. 9 (vote for 1)
-	      9480	FARLEY, STEVE
+	      9480	DEM FARLEY, STEVE
 	       248	Write-in
 	      3382	undervote-1
 	     13110	IN-DISTRICT
 	     36308	OUT-OF-DISTRICT
 
 STATE SENATOR, DIST 10 (vote for 1)
-	      7150	BRADLEY, DAVID
-	      4532	PHELPS, RANDALL
+	      7150	DEM BRADLEY, DAVID
+	      4532	REP PHELPS, RANDALL
 	        20	Write-in
 	       493	undervote-1
 	     12195	IN-DISTRICT
 	     37223	OUT-OF-DISTRICT
 
 STATE SENATOR, DIST. 11 (vote for 1)
-	      3765	ATCHUE, RALPH
-	      3555	SMITH, STEVE
+	      3765	DEM ATCHUE, RALPH
+	      3555	REP SMITH, STEVE
 	         8	Write-in
 	       297	undervote-1
 	      7625	IN-DISTRICT
 	     41793	OUT-OF-DISTRICT
 
 STATE SENATOR, DIST.14 (vote for 1)
-	       951	ALVAREZ, JAIME
-	      1294	GRIFFIN, GAIL
+	       951	DEM ALVAREZ, JAIME
+	      1294	REP GRIFFIN, GAIL
 	         4	Write-in
 	        79	undervote-1
 	      2328	IN-DISTRICT
 	     47090	OUT-OF-DISTRICT
 
 STATE REPRESENTATIVE, DIST. 2 (vote for 2)
-	      2628	ACKERLEY, JOHN CHRISTOPHER
-	      3240	GABALDÓN, ROSANNA
-	      3138	HERNANDEZ, DANIEL
+	      3240	DEM GABALDÓN, ROSANNA
+	      3138	DEM HERNANDEZ, DANIEL
+	      2628	REP ACKERLEY, JOHN CHRISTOPHER
 	        29	Write-in
 	      3419	undervote-1
 	       225	undervote-2
@@ -106,9 +106,9 @@ STATE REPRESENTATIVE, DIST. 2 (vote for 2)
 	     42966	OUT-OF-DISTRICT
 
 STATE REPRESENTATIVE, DIST. 3 (vote for 2)
-	      4826	GONZALES, SALLY ANN
+	      4826	DEM GONZALES, SALLY ANN
+	      3857	DEM SALDATE, MACARIO
 	      1088	GRN CIZEK III, EDWARD J. "TREY"
-	      3857	SALDATE, MACARIO
 	       102	Write-in
 	      2543	undervote-1
 	       858	undervote-2
@@ -116,8 +116,8 @@ STATE REPRESENTATIVE, DIST. 3 (vote for 2)
 	     42352	OUT-OF-DISTRICT
 
 STATE REPRESENTATIVE, DIST. 4 (vote for 2)
-	       411	FERNANDEZ, CHARLENE R.
-	       322	RUBALCAVA, JESUS
+	       411	DEM FERNANDEZ, CHARLENE R.
+	       322	DEM RUBALCAVA, JESUS
 	        24	Write-in
 	       257	undervote-1
 	       128	undervote-2
@@ -125,9 +125,9 @@ STATE REPRESENTATIVE, DIST. 4 (vote for 2)
 	     48783	OUT-OF-DISTRICT
 
 STATE REPRESENTATIVE, DIST. 9 (vote for 2)
-	      7697	FRIESE, RANDALL "RANDY"
-	      4468	HENDERSON, ANA
-	      6882	POWERS HANNLEY, PAMELA
+	      7697	DEM FRIESE, RANDALL "RANDY"
+	      6882	DEM POWERS HANNLEY, PAMELA
+	      4468	REP HENDERSON, ANA
 	        57	Write-in
 	      5826	undervote-1
 	       645	undervote-2
@@ -135,9 +135,9 @@ STATE REPRESENTATIVE, DIST. 9 (vote for 2)
 	     36308	OUT-OF-DISTRICT
 
 STATE REPRESENTATIVE, DIST. 10 (vote for 2)
-	      4691	CLODFELTER, TODD
-	      6579	ENGEL, KIRSTEN
-	      6544	MACH, STEFANIE
+	      6579	DEM ENGEL, KIRSTEN
+	      6544	DEM MACH, STEFANIE
+	      4691	REP CLODFELTER, TODD
 	        72	Write-in
 	      5460	undervote-1
 	       522	undervote-2
@@ -145,9 +145,9 @@ STATE REPRESENTATIVE, DIST. 10 (vote for 2)
 	     37223	OUT-OF-DISTRICT
 
 STATE REPRESENTATIVE, DIST. 11 (vote for 2)
-	      3237	FINCHEM, MARK
-	      3905	HAMMOND, CORIN
-	      2984	LEACH, VENDEN "VINCE"
+	      3905	DEM HAMMOND, CORIN
+	      3237	REP FINCHEM, MARK
+	      2984	REP LEACH, VENDEN "VINCE"
 	        33	Write-in
 	      4305	undervote-1
 	       393	undervote-2
@@ -155,10 +155,10 @@ STATE REPRESENTATIVE, DIST. 11 (vote for 2)
 	     41793	OUT-OF-DISTRICT
 
 STATE REPRESENTATIVE, DIST. 14 (vote for 2)
-	       910	HOLMES, MIKE
-	      1154	JOHN, DREW
-	       828	LINDSTROM, JASON
-	      1116	NUTT, BECKY
+	       910	DEM HOLMES, MIKE
+	       828	DEM LINDSTROM, JASON
+	      1154	REP JOHN, DREW
+	      1116	REP NUTT, BECKY
 	         1	Write-in
 	       447	undervote-1
 	       100	undervote-2
@@ -166,11 +166,11 @@ STATE REPRESENTATIVE, DIST. 14 (vote for 2)
 	     47090	OUT-OF-DISTRICT
 
 CORPORATION COMMISSIONER (vote for 3)
-	     18350	BURNS, ROBERT "BOB"
-	     26166	CHABIN, TOM
-	     16020	DUNN, BOYD
-	     26032	MUNDELL, WILLIAM "BILL"
-	     17081	TOBIN, ANDY
+	     26166	DEM CHABIN, TOM
+	     26032	DEM MUNDELL, WILLIAM "BILL"
+	     18350	REP BURNS, ROBERT "BOB"
+	     16020	REP DUNN, BOYD
+	     17081	REP TOBIN, ANDY
 	       313	Write-in
 	     16573	undervote-1
 	      8710	undervote-2
@@ -179,38 +179,38 @@ CORPORATION COMMISSIONER (vote for 3)
 	         7	OUT-OF-DISTRICT
 
 BOARD OF SUPERVISORS, DIST. 1 (vote for 1)
-	      7530	BICKEL, BRIAN
-	      5756	MILLER, ALLY
+	      7530	DEM BICKEL, BRIAN
+	      5756	REP MILLER, ALLY
 	        18	Write-in
 	       758	undervote-1
 	     14062	IN-DISTRICT
 	     35356	OUT-OF-DISTRICT
 
 BOARD OF SUPERVISORS, DIST. 2 (vote for 1)
-	      5104	VALADEZ, RAMÓN
+	      5104	DEM VALADEZ, RAMÓN
 	       180	Write-in
 	      1324	undervote-1
 	      6608	IN-DISTRICT
 	     42810	OUT-OF-DISTRICT
 
 BOARD OF SUPERVISORS, DIST. 3 (vote for 1)
-	      4819	BRONSON, SHARON
-	      3405	DEMARCO, KIM
+	      4819	DEM BRONSON, SHARON
+	      3405	REP DEMARCO, KIM
 	        23	Write-in
 	       362	undervote-1
 	      8609	IN-DISTRICT
 	     40809	OUT-OF-DISTRICT
 
 BOARD OF SUPERVISORS, DIST. 4 (vote for 1)
-	      7613	CHRISTY, STEVE
 	      3790	GRN REILLY, JOSHUA
+	      7613	REP CHRISTY, STEVE
 	        36	Write-in
 	      1542	undervote-1
 	     12981	IN-DISTRICT
 	     36437	OUT-OF-DISTRICT
 
 BOARD OF SUPERVISORS, DIST. 5 (vote for 1)
-	      5174	ELÍAS, RICHARD
+	      5174	DEM ELÍAS, RICHARD
 	      1228	GRN BASTIDAS, MARTIN
 	        49	Write-in
 	       700	undervote-1
@@ -218,75 +218,75 @@ BOARD OF SUPERVISORS, DIST. 5 (vote for 1)
 	     42267	OUT-OF-DISTRICT
 
 COUNTY ATTORNEY (vote for 1)
+	     31517	DEM LAWALL, BARBARA
 	     11690	GRN TUELL, CYNTHIA
-	     31517	LAWALL, BARBARA
 	       302	Write-in
 	      5902	undervote-1
 	     49411	IN-DISTRICT
 	         7	OUT-OF-DISTRICT
 
 SHERIFF (vote for 1)
-	     23641	NANOS, CHRIS
-	     23354	NAPIER, MARK
+	     23641	DEM NANOS, CHRIS
+	     23354	REP NAPIER, MARK
 	       139	Write-in
 	      2277	undervote-1
 	     49411	IN-DISTRICT
 	         7	OUT-OF-DISTRICT
 
 COUNTY RECORDER (vote for 1)
+	     35557	DEM RODRIGUEZ, F. ANN
 	      8536	GRN CEASE, MIKE
-	     35557	RODRIGUEZ, F. ANN
 	       220	Write-in
 	      5098	undervote-1
 	     49411	IN-DISTRICT
 	         7	OUT-OF-DISTRICT
 
 COUNTY TREASURER (vote for 1)
-	     35240	FORD, BETH
+	     35240	REP FORD, BETH
 	       824	Write-in
 	     13347	undervote-1
 	     49411	IN-DISTRICT
 	         7	OUT-OF-DISTRICT
 
 COUNTY ASSESSOR (vote for 1)
+	     30300	DEM STAPLES, BILL
 	     13594	DROUBIE, SUZANNE
-	     30300	STAPLES, BILL
 	       158	Write-in
 	      5359	undervote-1
 	     49411	IN-DISTRICT
 	         7	OUT-OF-DISTRICT
 
 COUNTY SUPERINTENDENT OF SCHOOLS (vote for 1)
-	     18818	BURKHOLDER, MARGARET
-	     27006	WILLIAMS, DUSTIN
+	     27006	DEM WILLIAMS, DUSTIN
+	     18818	REP BURKHOLDER, MARGARET
 	        75	Write-in
 	      3512	undervote-1
 	     49411	IN-DISTRICT
 	         7	OUT-OF-DISTRICT
 
 JUSTICE OF THE PEACE, PRECINCT 2 (vote for 1)
-	      3063	CORNEJO, ERICA
+	      3063	DEM CORNEJO, ERICA
 	        83	Write-in
 	       872	undervote-1
 	      4018	IN-DISTRICT
 	     45400	OUT-OF-DISTRICT
 
 JUSTICE OF THE PEACE, PRECINCT 4 (vote for 1)
-	      3471	PESQUIERA, CHARLENE
+	      3471	DEM PESQUIERA, CHARLENE
 	       112	Write-in
 	      1104	undervote-1
 	      4687	IN-DISTRICT
 	     44731	OUT-OF-DISTRICT
 
 JUSTICE OF THE PEACE, PRECINCT 6 (vote for 1)
-	      4688	ABOUD, PAULA
+	      4688	DEM ABOUD, PAULA
 	       115	Write-in
 	      1392	undervote-1
 	      6195	IN-DISTRICT
 	     43223	OUT-OF-DISTRICT
 
 JUSTICE OF THE PEACE, PRECINCT 9 (vote for 1)
-	      2439	FELIX, MARIA L.
+	      2439	DEM FELIX, MARIA L.
 	       421	GRN KNOX-BIERMAN, NANCY
 	        18	Write-in
 	       290	undervote-1
@@ -294,64 +294,64 @@ JUSTICE OF THE PEACE, PRECINCT 9 (vote for 1)
 	     46250	OUT-OF-DISTRICT
 
 JUSTICE OF THE PEACE, PRECINCT 10 (vote for 1)
-	      3199	ROBERTS, VINCE
+	      3199	REP ROBERTS, VINCE
 	        46	Write-in
 	      1439	undervote-1
 	      4684	IN-DISTRICT
 	     44734	OUT-OF-DISTRICT
 
 CONSTABLE, JUSTICE PRECINCT 1 (vote for 1)
-	      5233	RADEMAKER, JOHN
+	      5233	REP RADEMAKER, JOHN
 	        95	Write-in
 	      3346	undervote-1
 	      8674	IN-DISTRICT
 	     40744	OUT-OF-DISTRICT
 
 CONSTABLE, JUSTICE PRECINCT 3 CONSTABLE PRECINCT 3 (vote for 1)
-	        40	GONZALEZ, JOSE
+	        40	DEM GONZALEZ, JOSE
 	         3	Write-in
 	         7	undervote-1
 	        50	IN-DISTRICT
 	     49368	OUT-OF-DISTRICT
 
 CONSTABLE, JUSTICE PRECINCT 4 (vote for 1)
+	      2975	DEM VASQUEZ, OSCAR
 	       984	GRN BAKER, BERYL
-	      2975	VASQUEZ, OSCAR
 	        34	Write-in
 	       694	undervote-1
 	      4687	IN-DISTRICT
 	     44731	OUT-OF-DISTRICT
 
 CONSTABLE, JUSTICE PRECINCT 6 (vote for 1)
-	      4600	BERNAL, BENNETT
+	      4600	DEM BERNAL, BENNETT
 	       100	Write-in
 	      1495	undervote-1
 	      6195	IN-DISTRICT
 	     43223	OUT-OF-DISTRICT
 
 CONSTABLE, JUSTICE PRECINCT 7 (vote for 1)
-	      3076	SCHENEK JR., THOMAS
+	      3076	REP SCHENEK JR., THOMAS
 	        62	Write-in
 	      1405	undervote-1
 	      4543	IN-DISTRICT
 	     44875	OUT-OF-DISTRICT
 
 CONSTABLE, JUSTICE PRECINCT 8 (vote for 1)
-	      3302	DORGAN, MARY
+	      3302	DEM DORGAN, MARY
 	        67	Write-in
 	       950	undervote-1
 	      4319	IN-DISTRICT
 	     45099	OUT-OF-DISTRICT
 
 JUSTICE OF THE PEACE/CONSTABLE PRECINCT 9 (vote for 1)
-	      2632	PHILIP, COLETTE
+	      2632	DEM PHILIP, COLETTE
 	        49	Write-in
 	       487	undervote-1
 	      3168	IN-DISTRICT
 	     46250	OUT-OF-DISTRICT
 
 CONSTABLE, JUSTICE PRECINCT 10 (vote for 1)
-	      3141	STEVENSON, MICHAEL
+	      3141	REP STEVENSON, MICHAEL
 	        41	Write-in
 	      1502	undervote-1
 	      4684	IN-DISTRICT
