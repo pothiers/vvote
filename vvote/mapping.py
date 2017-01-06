@@ -1,16 +1,15 @@
 #! /usr/bin/env python3
 """Build mapping file between CVR and SOVC.
 """
-
 # EXAMPLES:
-#  genmap tests/data/mock1-sovc.xlsx tests/data/mock1.xlsx race1.csv choice1.csv
-#  genmap tests/data/G2016_EXPORT1.xlsx tests/data/day-1-cvr.xlsx race.csv choice.csv
-
+# genmap tests/data/mock1-sovc.xlsx tests/data/mock1-cvr.xlsx r1.csv c1.csv
+# genmap -v tests/data/day1-sovc.xlsx tests/data/day1-cvr.xlsx r.csv c.csv
 
 
 import sys
 import argparse
 import logging
+import warnings
 from collections import defaultdict
 from pprint import pprint
 
@@ -20,9 +19,9 @@ from openpyxl import Workbook
 from difflib import SequenceMatcher
 
 def similar(a, b):
-    "RETURN similariry in range [0,1]"
+    "Symetric similarity.  Higher number is more similar."
     if a == b:
-        return 999
+        return 99999
     return SequenceMatcher(a=a, b=b).ratio() + SequenceMatcher(a=b, b=a).ratio()
 
 def get_SOVC_titles(xslx_filename,
@@ -35,6 +34,7 @@ def get_SOVC_titles(xslx_filename,
     # Row 3:: Choices
     #
     # Col 7 to M:: vote counts
+    other = ['BALLOTS CAST', 'OVER VOTES', 'UNDER VOTES', 'VOTERS', 'WRITE-IN']
     wb = load_workbook(filename=xslx_filename)
     ws = wb.active
     totalsrow = ws.max_row - 1
@@ -43,7 +43,7 @@ def get_SOVC_titles(xslx_filename,
                  for c in range(7,ws.max_column+1)])
     choices = set([ws.cell(row=3,column=c).value.strip()
                    for c in range(4,ws.max_column+1)])
-    return races, choices
+    return races, choices - set(other)
 
 def get_CVR_titles(xslx_filename,
                    nrows = 10000, # progress every N rows iff verbose==True
@@ -54,6 +54,7 @@ def get_CVR_titles(xslx_filename,
     # Row 2 to N:: Choices
     #
     # Col 4 to M::
+    other = ['undervote', 'Write-in']
     wb = load_workbook(filename=xslx_filename, read_only=True)
     ws = wb.active
     nontitles = set(['Cast Vote Record',
@@ -62,6 +63,7 @@ def get_CVR_titles(xslx_filename,
                      'Ballot Style'])
     races = set()
     choices = set()
+    ignorecolumns = set()
     ridx = 0
     for row in ws.rows:
         ridx += 1
@@ -71,10 +73,11 @@ def get_CVR_titles(xslx_filename,
                 print('# processed {} ballots'.format(ridx))
         for cell in row:
             cidx += 1
-            if cidx < 4:
+            if cidx in ignorecolumns:
                 continue
             # Ignore the (leading) columns that are not Race Titles
             if ridx == 1 and cell.value in nontitles:
+                ignorecolumns.add(cidx)
                 continue
             if ridx == 1: # header
                 if cell.value != None:
@@ -84,35 +87,33 @@ def get_CVR_titles(xslx_filename,
                 if (cell.value == '' or cell.value == None or cell.value.strip() == ''):
                     continue
                 choices.add(cell.value.strip())
-    return races, choices
+    return races, choices - set(other)
 
 def gen_map(sovc_xslx, cvr_xslx, verbose=False):
     races_sovc, choices_sovc = get_SOVC_titles(sovc_xslx, verbose=verbose)
     races_cvr, choices_cvr = get_CVR_titles(cvr_xslx, verbose=verbose)
-    racelut = dict() # lut[sovc] = cvr
-    choicelut = dict() # lut[sovc] = cvr
-    other = ['BALLOTS CAST', 'OVER VOTES', 'UNDER VOTES', 'VOTERS', 'WRITE-IN']
+    racelut = dict() # lut[cvr] = sovc
+    choicelut = dict() # lut[cvr] = sovc
     #!for rs,rc in itertools.product(races_sovc, races_cvr):
-    for rs in races_sovc:
-        maxsim = 0
-        maxcvr = None
-        for rc in races_cvr:
+    for rc in races_cvr:
+        maxsim = -1
+        maxsovc = None
+        for rs in races_sovc:
             s = similar(rs,rc)
             if s > maxsim:
                 maxsim = s
-                maxcvr = rc
-                racelut[rs] = maxcvr
-    for cs  in choices_sovc:
-        if cs in other:
-            continue
-        maxsim = 0
-        maxcvr = None
-        for cc in choices_cvr:
+                maxsovc = rs
+                racelut[rc] = maxsovc
+
+    for cc in choices_cvr:
+        maxsim = -1
+        maxsovc = None
+        for cs  in choices_sovc:
             s = similar(cs,cc)
             if s > maxsim:
                 maxsim = s
-                maxcvr = cc
-                choicelut[cs] = maxcvr
+                maxsovc = cs
+                choicelut[cc] = maxsovc
                 
     return racelut, choicelut
             
@@ -157,16 +158,17 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
-    racelut, choicelut = gen_map(args.sovcfile, args.cvrfile,
-                                 verbose=args.verbose)
-    #print('RACE lut')
-    #pprint(racelut)
-    for sovc,cvr in racelut.items():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        racelut, choicelut = gen_map(args.sovcfile, args.cvrfile,
+                                     verbose=args.verbose)
+    print('{}\t{}'.format('SOVC','CVR'), file=args.racemap)
+    for cvr,sovc in racelut.items():
         if sovc != cvr:
             print('{}\t{}'.format(sovc,cvr), file=args.racemap)
-    #print('CHOICE lut')
-    #pprint(choicelut)
-    for sovc,cvr in choicelut.items():
+
+    print('{}\t{}'.format('SOVC','CVR'), file=args.choicemap)
+    for cvr,sovc in choicelut.items():
         if sovc != cvr:
             print('{}\t{}'.format(sovc,cvr), file=args.choicemap)
 

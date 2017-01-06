@@ -24,15 +24,16 @@ echo "Starting tests in \"$dir\" ..."
 echo ""
 echo ""
 
+#testCommand gm1_1 "genmap $data/day1-sovc.xlsx $data/day1-cvr.xlsx r.csv c.csv"
+
 # almost 40k ballots; mock1.xlsx
 results1="$sto/mock1-results.out"
-testCommand vv0_1 "countvote $data/mock1.xlsx $results1" "^\#" n
+testCommand vv0_1 "countvote $data/mock1-cvr.xlsx $results1" "^\#" n
 testOutput vv0_1_out $results1 '^\#' n
-
 
 # almost 50k ballots; time = 60 sec
 results1="$sto/day1-results.out"
-testCommand vv1_1 "countvote $data/day-1-cvr.xlsx $results1" "^\#" n
+testCommand vv1_1 "countvote $data/day1-cvr.xlsx $results1" "^\#" n
 testOutput vv1_1_out $results1 '^\#' n
 
 ###########################################
@@ -40,8 +41,8 @@ testOutput vv1_1_out $results1 '^\#' n
 #exit $return_code
 ###########################################
 
-#!sovc=$data/G2016_EXPORT1.xlsx
-#!ballots=$data/day-1-cvr.xlsx
+#!sovc=$data/day1-sovc.xlsx
+#!ballots=$data/day1-cvr.xlsx
 #!results1b="$sto/day1-results.out"
 #!testCommand vv2_1 "countvote --verbose --sovc $sovc $ballots $results1b"
 #!sort $results1b > $results1
