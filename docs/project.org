@@ -28,7 +28,33 @@ OPTIONS
      name of SOVC Excel (.xslx) file.  If not given, comparision will
      not be done.
 + --verbose :: Output progress as ballots processed.
-  
+
+** genmap  
+Generate string mapping SOVC to CVR (Races and Choices)
+
+: genmap --help
+: usage: genmap [-h] [--version] [-v]
+:               [--loglevel {CRTICAL,ERROR,WARNING,INFO,DEBUG}]
+:               sovcfile cvrfile racemap choicemap
+: 
+: Create string mapping (SOVC to CVR)
+: 
+: positional arguments:
+:   sovcfile              SOVC Excel (xslx) file
+:   cvrfile               CVR Excel (xslx) file
+:   racemap               Tab delimited LUT (SOVC -> CVR)
+:   choicemap             Tab delimited LUT (SOVC -> CVR)
+: 
+: optional arguments:
+:   -h, --help            show this help message and exit
+:   --version             show program's version number and exit
+:   -v, --verbose         Output progress
+:   --loglevel {CRTICAL,ERROR,WARNING,INFO,DEBUG}
+:                         Kind of diagnostic output
+: 
+
+Example:
+: genmap tests/data/G2016_EXPORT1.xlsx tests/data/day-1-cvr.xlsx race.csv choice.csv
 
 * TODO Release Work-Flow Overview 
 # Can we use Jenkins (automation server, builds); Continuous Integration 

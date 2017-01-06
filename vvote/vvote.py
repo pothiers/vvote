@@ -200,7 +200,8 @@ def count_votes(xslx_filename,
                 if (cell.value == '' or cell.value == None):
                     choice = na_tag
                 else:
-                    choice = clean_choice(cell.value)
+                    #choice = clean_choice(cell.value)
+                    choice = cell.value
                 race = coltitle[cidx]
                 next_race = coltitle[cidx+1] if cidx < ws.max_column else None
                 raceballot.append(choice)
