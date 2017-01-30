@@ -7,8 +7,16 @@ handle various edge cases.
 
 
 "python3 setup.py install" will install programs:
-- countvote
-- sovc
-- transpose
+- countvote :: count ballots
+- sovc :: Extract from Statement Of Votes Cast (SOVC) 
+- transpose :: Transpose rows/columns from one Excel file to another
+- genmap :: Create string mapping (SOVC to CVR)
+
+All programs can be run with "--help" option (e.g. "countvote --help") to get
+more help.
 
 
+
+After installing (from master branch), you should always be able to execute
+"tests/smoke/smoke.all.sh" and get a message: "ALL smoke tests PASSED".
+If not, there is a problem and it should be reported.
