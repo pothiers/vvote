@@ -1,4 +1,4 @@
-# vvote
+# vvote [![Build Status](https://travis-ci.org/pothiers/vvote.svg?branch=master)](https://travis-ci.org/pothiers/vvote)
 Vote counting and data validation
 
 Given XSL file representing data from ballots: count votes for
