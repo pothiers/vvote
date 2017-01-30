@@ -154,8 +154,14 @@ def count_votes(xslx_filename,
                 writeintag='Write-in',
                 overvotetag='overvote',
                 undervotetag='undervote'):
+    if verbose:
+        print('# VERBOSE enabled')
     wb = load_workbook(filename=xslx_filename, read_only=True)
     ws = wb.active
+    if (ws.max_row == 1) or (ws.max_column == 1):
+        ws.max_row = ws.max_column = None
+        ws.calculate_dimension(force=True)
+    print('# maxCol={}, maxRow={}'.format(ws.max_column, ws.max_row))
     nontitles = set(['Cast Vote Record',
                      'Serial Number',
                      'Precinct',
@@ -177,6 +183,7 @@ def count_votes(xslx_filename,
                 print('# processed {} ballots'.format(ridx))
         for cell in row:
             cidx += 1
+            #print('# DBG-0: ridx={} cidx{}'.format(ridx,cidx))
 
             # Ignore the (leading) columns that are not Race Titles
             if ridx == 1 and cell.value in nontitles:
@@ -194,7 +201,8 @@ def count_votes(xslx_filename,
                     n_votes[race] += 1
                 coltitle[cidx] = race
             else: # ballots
-                if cidx not in coltitle: # should never happen
+                if cidx not in coltitle:
+                    # Skip columns we don't care about
                     continue
                 
                 if (cell.value == '' or cell.value == None):
@@ -204,6 +212,7 @@ def count_votes(xslx_filename,
                     choice = cell.value
                 race = coltitle[cidx]
                 next_race = coltitle[cidx+1] if cidx < ws.max_column else None
+                #print('# DBG-0: race="{}"'.format(race))
                 raceballot.append(choice)
                 if race != next_race: # finished one race, one ballot
                     #print('DBG-1: raceballot={}'.format(raceballot))
