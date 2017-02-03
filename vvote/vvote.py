@@ -136,7 +136,7 @@ def write_sovc(votes, choices, n_votes, sovcfilename,
             ws.cell(column=col, row=4, value="{}".format(votes[race][choice]))
             col += 1
     wb.save(sovcfilename)
-    sovc.transpose(sovcfilename, 'transpose.{}'.format(sovcfilename))
+    sovc.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
 
 
 def clean_choice(choice):
@@ -160,6 +160,7 @@ def count_votes(xslx_filename,
     ws = wb.active
     if (ws.max_row == 1) or (ws.max_column == 1):
         ws.max_row = ws.max_column = None
+        # unzip -p /data/mock-election/Final_Count_LVR.xlsx | grep dimension
         ws.calculate_dimension(force=True)
     print('# maxCol={}, maxRow={}'.format(ws.max_column, ws.max_row))
     nontitles = set(['Cast Vote Record',
