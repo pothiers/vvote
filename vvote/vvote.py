@@ -12,24 +12,27 @@ from openpyxl import Workbook
 from . import sovc
 
 
-ballot2sovc = {
-    #Ballot, SOVC
-    'Write-in': 'WRITE-IN',
-    'overvote': 'OVER VOTES',
-    'undervote': 'UNDER VOTES',
-    'YES/SÍ': 'YES/SI' ,
-    'PRESIDENTIAL ELECTOR': 'PRESIDENTIAL ELECTORS',
-    'U.S. SENATOR': 'UNITED STATES SENATOR',
-    }
+#!ballot2sovc = {
+#!    #Ballot, SOVC
+#!    'Write-in': 'WRITE-IN',
+#!    'overvote': 'OVER VOTES',
+#!    'undervote': 'UNDER VOTES',
+#!    'YES/SÍ': 'YES/SI' ,
+#!    'PRESIDENTIAL ELECTOR': 'PRESIDENTIAL ELECTORS',
+#!    'U.S. SENATOR': 'UNITED STATES SENATOR',
+#!    }
+#!
+#!def revlut(lut):
+#!    "RETURN: new dict[a] => b from dict[b] => a"
+#!    newlut = dict()
+#!    for k,v in lut.items():
+#!        newlut[v] = k
+#!    return newlut
+#!
+#!sovc2ballot = revlut(ballot2sovc)
+sovc2ballot = dict()
 
-def revlut(lut):
-    "RETURN: new dict[a] => b from dict[b] => a"
-    newlut = dict()
-    for k,v in lut.items():
-        newlut[v] = k
-    return newlut
-
-sovc2ballot = revlut(ballot2sovc)
+            
 
 def compare_sovc(sovcfile, votes, choices, n_votes):
     print('Comparing calculated vote counts to those from {}'.format(sovcfile))
@@ -95,8 +98,8 @@ def emit_results(votes, choices, n_votes, num_ballots,
     file.close()
     
 def write_sovc(votes, choices, n_votes, sovcfilename,
-                 orderedraces=None,
-                 na_tag='<OOD>'):
+               orderedraces=None,
+               na_tag='<OOD>'):
     # votes[race][choice] = count
     # choices[race] = set([choice1, choice2,...])
     # n_votes[race] => num-to-vote-for
@@ -129,11 +132,27 @@ def write_sovc(votes, choices, n_votes, sovcfilename,
     ws['A5'] = '_x001A_'
 
     col = 7
+    ignore_choices = set([na_tag])
     for race in orderedraces:
-        for choice in choices[race]:
+        nvotes = n_votes[race]
+
+        # sum values from N*undervote-N (N=[1..nvotes])
+        undervotes = 0
+        for n in range(1,nvotes+1):
+            choice = 'undervote-{}'.format(n)
+            undervotes += (n * votes[race][choice])
+            ignore_choices.add(choice) 
+        votes[race]['undervotes'] = undervotes
+        choices[race].add('undervotes')
+        
+        for choice in set(choices[race]-ignore_choices):
+            count = votes[race][choice]
+            if choice == 'overvote':
+                count*= nvotes
+
             ws.cell(column=col, row=1, value="{}".format(race))
             ws.cell(column=col, row=3, value="{}".format(choice))
-            ws.cell(column=col, row=4, value="{}".format(votes[race][choice]))
+            ws.cell(column=col, row=4, value="{}".format(count))
             col += 1
     wb.save(sovcfilename)
     sovc.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
