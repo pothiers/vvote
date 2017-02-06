@@ -5,6 +5,7 @@
 import sys
 import argparse
 import logging
+import sqlite3
 from collections import defaultdict
 
 from openpyxl import load_workbook
@@ -96,7 +97,60 @@ def emit_results(votes, choices, n_votes, num_ballots,
         print('\t{:10d}\t{}'.format(votes[race][na_tag], 'OUT-OF-DISTRICT'),
               file=file)
     file.close()
-    
+
+
+schema = '''
+CREATE TABLE race (
+   race_id integer primary key,
+   title text,
+   num_to_vote_for integer,
+);
+CREATE TABLE choices (
+  race_id integer,
+  choice_id text,
+);
+CREATE TABLE cvr (
+  cvr_id integer,
+  race_id integer,
+  choice_id text,
+);
+
+'''    
+def save_sovc_db(dbfile, votes, choices, n_votes, sovcfilename,
+                 orderedraces=None,
+                 na_tag='<OOD>'):
+    """Save SOVC sqlite DB"""
+    # votes[race][choice] = count
+    # choices[race] = set([choice1, choice2,...])
+    # n_votes[race] => num-to-vote-for
+
+    conn = sqlite3.connect(dbfile)
+
+    for race in orderedraces:
+        nvotes = n_votes[race]
+
+        # sum values from N*undervote-N (N=[1..nvotes])
+        undervotes = 0
+        for n in range(1,nvotes+1):
+            choice = 'undervote-{}'.format(n)
+            undervotes += (n * votes[race][choice])
+            ignore_choices.add(choice) 
+        votes[race]['undervotes'] = undervotes
+        choices[race].add('undervotes')
+        
+        for choice in set(choices[race]-ignore_choices):
+            count = votes[race][choice]
+            if choice == 'overvote':
+                count*= nvotes
+
+            ws.cell(column=col, row=1, value="{}".format(race))
+            ws.cell(column=col, row=3, value="{}".format(choice))
+            ws.cell(column=col, row=4, value="{}".format(count))
+            col += 1
+    wb.save(sovcfilename)
+    sovc.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
+
+
 def write_sovc(votes, choices, n_votes, sovcfilename,
                orderedraces=None,
                na_tag='<OOD>'):
