@@ -1,4 +1,4 @@
-#!/bin/bash
+en#!/bin/bash
 # AUTHORS:    S. Pothier
 # PURPOSE:    Wrapper for smoke test
 # EXAMPLE:
@@ -41,16 +41,16 @@ xls2csv $tmpexcel $sovcout
 #exit $return_code
 ###########################################
 
-# almost 40k ballots; mock1.xlsx
-results1="$sto/mock1-results.out"
-testCommand vv0_1 "countvote $data/mock1-cvr.xlsx $results1" "^\#" n
-testOutput vv0_1_out $results1 '^\#' n
-
-# almost 50k ballots; time = 60 sec
-results1="$sto/day1-results.out"
-testCommand vv1_1 "countvote $data/day1-cvr.xlsx $results1" "^\#" n
-testOutput vv1_1_out $results1 '^\#' n
-
+#!# almost 40k ballots; mock1.xlsx
+#!results1="$sto/mock1-results.out"
+#!testCommand vv0_1 "countvote $data/mock1-cvr.xlsx $results1" "^\#" n
+#!testOutput vv0_1_out $results1 '^\#' n
+#!
+#!# almost 50k ballots; time = 60 sec
+#!results1="$sto/day1-results.out"
+#!testCommand vv1_1 "countvote $data/day1-cvr.xlsx $results1" "^\#" n
+#!testOutput vv1_1_out $results1 '^\#' n
+#!
 
 #!sovc=$data/day1-sovc.xlsx
 #!ballots=$data/day1-cvr.xlsx
