@@ -163,14 +163,22 @@ def main():
         racelut, choicelut = gen_map(args.sovcfile, args.cvrfile,
                                      verbose=args.verbose)
     print('{}\t{}'.format('SOVC','CVR'), file=args.racemap)
+    numout=0
     for cvr,sovc in racelut.items():
         if sovc != cvr:
+            numout += 1
             print('{}\t{}'.format(sovc,cvr), file=args.racemap)
+    print('Generated {}/{} records to map RACE strings from {} to {}'
+          .format(numout, len(racelut), args.sovcfile, args.cvrfile))
 
     print('{}\t{}'.format('SOVC','CVR'), file=args.choicemap)
+    numout=0
     for cvr,sovc in choicelut.items():
         if sovc != cvr:
+            numout += 1
             print('{}\t{}'.format(sovc,cvr), file=args.choicemap)
+    print('Generated {}/{} records to map CHOICE strings from {} to {}'
+          .format(numout, len(choicelut), args.sovcfile, args.cvrfile))
 
 if __name__ == '__main__':
     main()

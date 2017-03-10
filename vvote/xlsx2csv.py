@@ -1,0 +1,68 @@
+#! /usr/bin/env python
+"""<<Python script callable from command line.  Put description here.>>
+"""
+# Docstrings intended for document generation via pydoc
+
+import sys
+import argparse
+import logging
+from openpyxl import load_workbook
+import csv
+
+def xlsx2csv(xlsx_filename, csv_filename,  verbose=False, nrows=10000):
+    wb = load_workbook(filename=xlsx_filename, read_only=True)
+    ws = wb.active
+    if (ws.max_row == 1) or (ws.max_column == 1):
+        ws.max_row = ws.max_column = None
+        # unzip -p /data/mock-election/Final_Count_LVR.xlsx | grep dimension
+        ws.calculate_dimension(force=True)
+    print('# maxCol={}, maxRow={}'.format(ws.max_column, ws.max_row))
+    with open(csv_filename, 'w') as csvfile:
+        writer = csv.writer(csvfile)
+        ridx = 0
+        for row in ws.rows:
+            ridx += 1
+            if verbose:
+                if (ridx % nrows) == 0:
+                    print('# processed {} ballots'.format(ridx))
+            writer.writerow([cell.value for cell in row])
+
+##############################################################################
+
+def main():
+    "Parse command line arguments and do the work."
+    #!print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
+    parser = argparse.ArgumentParser(
+        description='My shiny new python program',
+        epilog='EXAMPLE: %(prog)s a b"'
+        )
+    parser.add_argument('--version', action='version', version='1.0.1')
+    parser.add_argument('xlsxfile', type=argparse.FileType('rb'),
+                        help='Excel Input filename')
+    parser.add_argument('csvfile', type=argparse.FileType('w'),
+                        help='CSV output filename')
+
+    parser.add_argument('--loglevel',
+                        help='Kind of diagnostic output',
+                        choices=['CRTICAL', 'ERROR', 'WARNING',
+                                 'INFO', 'DEBUG'],
+                        default='WARNING')
+    args = parser.parse_args()
+    args.csvfile.close()
+    args.csvfile = args.csvfile.name
+
+    #!print 'My args=',args
+    #!print 'xlsxfile=',args.xlsxfile
+
+    log_level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(log_level, int):
+        parser.error('Invalid log level: %s' % args.loglevel)
+    logging.basicConfig(level=log_level,
+                        format='%(levelname)s %(message)s',
+                        datefmt='%m-%d %H:%M')
+    logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
+
+    xlsx2csv(args.xlsxfile, args.csvfile,  verbose=False, nrows=10000)
+
+if __name__ == '__main__':
+    main()
