@@ -32,8 +32,9 @@ tmpexcel="$HOME/.vvote_output/tmp.xlsx"
 sovcout="$HOME/.vvote_output/2016GenSampleSet-sovc.csv"
 txtout="$HOME/.vvout_output/2016GenSampleSet-sovc.txt"
 testCommand vv2_1 "countvote -f SOVC $data/2016GenSampleSet.400.xlsx $tmpexcel" "^\#"
-xls2csv $tmpexcel $sovcout
-#!testOutput vv2_1_out $sovcout
+xls2csv --transpose $tmpexcel $sovcout
+testOutput vv2_1_out $sovcout
+
 #!testCommand vv3_1 "countvote $data/2016GenSampleSet.xlsx $txtout"
 #!testOutput vv3_1_out $txtcout
 
