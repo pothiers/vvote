@@ -21,7 +21,7 @@ def xlsx2csv(xlsx_filename, csv_filename,
         ws0.max_row = ws0.max_column = None
         # unzip -p /data/mock-election/Final_Count_LVR.xlsx | grep dimension
         ws0.calculate_dimension(force=True)
-    print('# maxCol={}, maxRow={}'.format(ws0.max_column, ws0.max_row))
+    #!print('# maxCol={}, maxRow={}'.format(ws0.max_column, ws0.max_row))
 
     if transpose:
         for row in range(1,ws0.max_row+1):

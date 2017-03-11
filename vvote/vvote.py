@@ -6,6 +6,7 @@ import sys
 import argparse
 import logging
 import sqlite3
+import copy
 from collections import defaultdict
 
 from openpyxl import load_workbook
@@ -153,6 +154,7 @@ def save_sovc_db(dbfile, votes, choices, n_votes, sovcfilename,
 
 def write_sovc(votes, choices, n_votes, sovcfilename,
                orderedraces=None,
+               orderedchoices=None,
                na_tag='<OOD>'):
     # votes[race][choice] = count
     # choices[race] = set([choice1, choice2,...])
@@ -199,7 +201,10 @@ def write_sovc(votes, choices, n_votes, sovcfilename,
         votes[race]['undervotes'] = undervotes
         choices[race].add('undervotes')
         
-        for choice in set(choices[race]-ignore_choices):
+        #for choice in set(choices[race]-ignore_choices):
+        for choice in orderedchoices[race]:
+            if choice in ignore_choices:
+                continue
             count = votes[race][choice]
             if choice == 'overvote':
                 count*= nvotes
@@ -235,12 +240,14 @@ def count_votes(xslx_filename,
         ws.max_row = ws.max_column = None
         # unzip -p /data/mock-election/Final_Count_LVR.xlsx | grep dimension
         ws.calculate_dimension(force=True)
-    print('# maxCol={}, maxRow={}'.format(ws.max_column, ws.max_row))
+    #!print('# maxCol={}, maxRow={}'.format(ws.max_column, ws.max_row))
     nontitles = set(['Cast Vote Record',
                      'Serial Number',
                      'Precinct',
                      'Ballot Style'])
     choices = defaultdict(set) # choices[race] = set([choice1, choice2,...])
+    orderedchoices = dict() # d[race] => [choice1, ...]
+    raceballot = list() # single ballot for single race, list(choice1, ...])
     votes = defaultdict(lambda : defaultdict(int)) # votes[race][choice] = cnt
     n_votes = defaultdict(int)  # n_votes[race] => num-to-vote-for
 
@@ -251,7 +258,6 @@ def count_votes(xslx_filename,
     for row in ws.rows:
         ridx += 1
         cidx = 0
-        raceballot = list() # single ballot for single race
         if verbose:
             if (ridx % nrows) == 0:
                 print('# processed {} ballots'.format(ridx))
@@ -268,9 +274,9 @@ def count_votes(xslx_filename,
                     race = cell.value.strip()
                     orderedraces.append(race)
                     n_votes[race] = 1
-                    choices[race].add(overvotetag)
-                    choices[race].add(writeintag)
-                    choices[race].add(na_tag)
+                    #!choices[race].add(overvotetag)
+                    #!choices[race].add(writeintag)
+                    #!choices[race].add(na_tag)
                 else: # vote-for-N race
                     n_votes[race] += 1
                 coltitle[cidx] = race
@@ -294,7 +300,8 @@ def count_votes(xslx_filename,
                         undervote_m = ('undervote-{}'
                                        .format(raceballot.count(undervotetag)))
                         votes[race][undervote_m] += 1
-                        choices[race].add(undervote_m)
+                        #!choices[race].add(undervote_m)
+                        raceballot.append(undervote_m)
                     if overvotetag in raceballot:
                         assert raceballot.count(overvotetag) == n_votes[race]
                         votes[race][overvotetag] += 1
@@ -303,7 +310,7 @@ def count_votes(xslx_filename,
                         votes[race][na_tag] += 1
                     for c in raceballot:
                         if c == writeintag:
-                            choices[race].add(c)
+                            #!choices[race].add(c)
                             votes[race][c] += 1                            
                     raceballot = [c for c in raceballot
                                   if ((c != undervotetag)
@@ -317,11 +324,12 @@ def count_votes(xslx_filename,
                     for choice in set(raceballot):
                         choices[race].add(choice)
                         votes[race][choice] += 1
+                    orderedchoices[race] = copy.copy(raceballot)
                     raceballot = list() # single ballot for single race
 
     nballots = ridx-1
     print('Processed {} ballots'.format(nballots))
-    return votes, choices, n_votes, nballots, orderedraces
+    return votes, choices, n_votes, nballots, orderedraces, orderedchoices
 
 
 
@@ -376,8 +384,8 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
     print('# Counting votes from file: {}'.format(args.infile))
-    votes, choices, n_votes, nballots, races = count_votes(args.infile,
-                                                           verbose=args.verbose)
+    (votes, choices, n_votes, nballots, races, ochoices
+    ) = count_votes(args.infile, verbose=args.verbose)
     # Vote counts now in: votes
     if args.format == 'text':
         emit_results(votes, choices, n_votes, nballots,
@@ -385,7 +393,7 @@ def main():
                      outputfile=args.outfile )
     elif args.format == 'SOVC':
         write_sovc(votes, choices, n_votes, args.outfile,
-                   orderedraces=races)
+                   orderedraces=races, orderedchoices=ochoices)
         
     if args.sovc != None:
         compare_sovc(args.sovc, votes, choices, n_votes)
