@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-"""Extract from Statement Of Votes Cast
+"""Extract from Statement Of Votes Cast (SOVC)
 """
 
 import sys
@@ -10,6 +10,46 @@ from pprint import pprint
 
 from openpyxl import load_workbook
 from openpyxl import Workbook
+
+
+
+def valid_SOVC(sovc_excel_filename, verbose=False):
+    # Row 1:: Race titles (duplicated over columns representing choices)
+    # Row 2:: party (we don't care)
+    # Row 3:: Choices
+    # Row 4 to N-1:: Precinct totals
+    # Row N:: Grand totals (County totals)
+    # Row N+1:: "_x001A_"  ??? End of data?
+    #
+    # Col 1:: County Number
+    # Col 2:: Precinct Code (number)
+    # Col 3:: Precinct Name (number) or "COUNTY TOTALS"
+    # Col 4:: Registered Voters-Total
+    # Col 5:: Ballots Cast-Total
+    # Col 6:: Ballots Cast-Blank
+    # Col 7 to M:: vote counts
+
+    MARKER='_x001A_'
+    wb = load_workbook(filename=sovc_excel_filename, read_only=True)
+    ws = wb.active
+    if (ws.max_row == 1) or (ws.max_column == 1):
+        ws.max_row = ws.max_column = None
+        ws.calculate_dimension(force=True)
+    totalsrow = ws.max_row - 1        
+    if verbose:
+        print('DBG: file={}, ws.max_row = {}, ws.max_column = {}'
+              .format(sovc_excel_filename, ws.max_row, ws.max_column))
+
+    if ws.cell(row=totalsrow+1, column=1).value.strip() != MARKER:
+        msg = ('Row={}, Col={} is "{}" but expected "{}"'
+               .format(totalsrow, 1, ws.cell(row=totalsrow+1, column=1).value,
+                       MARKER ))
+        raise 'Invalid SOVC ({}); {}'.format(sovc_excel_filename, msg)
+    if ws.cell(row=totalsrow, column=3).value != 'COUNTY TOTALS':
+        msg = ('Row={}, Col={} is "{}" but expected "COUNTY TOTALS"'
+               .format(totalsrow,3, ws.cell(row=totalsrow, column=3).value))
+        raise 'Invalid SOVC ({}); {}'.format(sovc_excel_filename, msg)
+    return ws
 
 def transpose(in_xslx, out_xslx):
     wb = load_workbook(filename=in_xslx)
@@ -27,22 +67,7 @@ def transpose(in_xslx, out_xslx):
 def get_totals(xslx_filename):
     "RETURN: dict[(race,choice)] => count"
     
-    # Row 1:: Race titles (duplicated over columns representing choices)
-    # Row 2:: party (we don't care)
-    # Row 3:: Choices
-    # Row 4 to N-1:: Precinct totals
-    # Row N:: Grand totals (County totals)
-    # Row N+1:: "_x001A_"  ??? End of data?
-    #
-    # Col 1:: County Number
-    # Col 2:: Precinct Code (number)
-    # Col 3:: Precinct Name (number) or "COUNTY TOTALS"
-    # Col 4:: Registered Voters-Total
-    # Col 5:: Ballots Cast-Total
-    # Col 6:: Ballots Cast-Blank
-    # Col 7 to M:: vote counts
-    wb = load_workbook(filename=xslx_filename)
-    ws = wb.active
+    ws = valid_SOVC(xslx_filename)
     totalsrow = ws.max_row - 1
     assert ws.cell(row=totalsrow, column=3).value == 'COUNTY TOTALS'
     races = [ws.cell(row=1,column=c).value.strip()

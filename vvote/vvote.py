@@ -32,12 +32,14 @@ from . import sovc
 #!    return newlut
 #!
 #!sovc2ballot = revlut(ballot2sovc)
-sovc2ballot = dict()
 
             
 
 def compare_sovc(sovcfile, votes, choices, n_votes):
     print('Comparing calculated vote counts to those from {}'.format(sovcfile))
+    sovc2ballot = dict()
+    ballot2sovc = dict()
+
     totdict = sovc.get_totals(sovcfile)
     sovcraces = set([sovc2ballot.get(race,race)
                      for race,choice in totdict.keys()])
@@ -117,39 +119,39 @@ CREATE TABLE cvr (
 );
 
 '''    
-def save_sovc_db(dbfile, votes, choices, n_votes, sovcfilename,
-                 orderedraces=None,
-                 na_tag='<OOD>'):
-    """Save SOVC sqlite DB"""
-    # votes[race][choice] = count
-    # choices[race] = set([choice1, choice2,...])
-    # n_votes[race] => num-to-vote-for
-
-    conn = sqlite3.connect(dbfile)
-
-    for race in orderedraces:
-        nvotes = n_votes[race]
-
-        # sum values from N*undervote-N (N=[1..nvotes])
-        undervotes = 0
-        for n in range(1,nvotes+1):
-            choice = 'undervote-{}'.format(n)
-            undervotes += (n * votes[race][choice])
-            ignore_choices.add(choice) 
-        votes[race]['undervotes'] = undervotes
-        choices[race].add('undervotes')
-        
-        for choice in set(choices[race]-ignore_choices):
-            count = votes[race][choice]
-            if choice == 'overvote':
-                count*= nvotes
-
-            ws.cell(column=col, row=1, value="{}".format(race))
-            ws.cell(column=col, row=3, value="{}".format(choice))
-            ws.cell(column=col, row=4, value="{}".format(count))
-            col += 1
-    wb.save(sovcfilename)
-    sovc.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
+#!def save_sovc_db(dbfile, votes, choices, n_votes, sovcfilename,
+#!                 orderedraces=None,
+#!                 na_tag='<OOD>'):
+#!    """Save SOVC sqlite DB"""
+#!    # votes[race][choice] = count
+#!    # choices[race] = set([choice1, choice2,...])
+#!    # n_votes[race] => num-to-vote-for
+#!
+#!    conn = sqlite3.connect(dbfile)
+#!
+#!    for race in orderedraces:
+#!        nvotes = n_votes[race]
+#!
+#!        # sum values from N*undervote-N (N=[1..nvotes])
+#!        undervotes = 0
+#!        for n in range(1,nvotes+1):
+#!            choice = 'undervote-{}'.format(n)
+#!            undervotes += (n * votes[race][choice])
+#!            ignore_choices.add(choice) 
+#!        votes[race]['undervotes'] = undervotes
+#!        choices[race].add('undervotes')
+#!        
+#!        for choice in set(choices[race]-ignore_choices):
+#!            count = votes[race][choice]
+#!            if choice == 'overvote':
+#!                count*= nvotes
+#!
+#!            ws.cell(column=col, row=1, value="{}".format(race))
+#!            ws.cell(column=col, row=3, value="{}".format(choice))
+#!            ws.cell(column=col, row=4, value="{}".format(count))
+#!            col += 1
+#!    wb.save(sovcfilename)
+#!    sovc.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
 
 
 def write_sovc(votes, choices, n_votes, sovcfilename,

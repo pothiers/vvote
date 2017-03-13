@@ -18,14 +18,22 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 from difflib import SequenceMatcher
 
+from . import sovc
+from . import cvr
+
+
 def similar(a, b):
     "Symetric similarity.  Higher number is more similar."
     if a == b:
         return 99999
-    return SequenceMatcher(a=a, b=b).ratio() + SequenceMatcher(a=b, b=a).ratio()
+    #!return SequenceMatcher(a=a, b=b).ratio()+SequenceMatcher(a=b, b=a).ratio()
+    return max(SequenceMatcher(a=a, b=b).ratio(),
+               SequenceMatcher(a=b, b=a).ratio())
 
-def get_SOVC_titles(xslx_filename,
+            
+def get_SOVC_titles(excel_file,
                     nrows = 10000, # progress every N rows iff verbose==True
+                    MARKER='_x001A_',
                     verbose=False):
     "RETURN: dict[(race,choice)] => count"
     
@@ -35,28 +43,21 @@ def get_SOVC_titles(xslx_filename,
     #
     # Col 7 to M:: vote counts
     other = ['BALLOTS CAST', 'OVER VOTES', 'UNDER VOTES', 'VOTERS', 'WRITE-IN']
-    wb = load_workbook(filename=xslx_filename)
-    ws = wb.active
+    ws = sovc.valid_SOVC(excel_file)
     totalsrow = ws.max_row - 1
-    assert ws.cell(row=totalsrow, column=3).value == 'COUNTY TOTALS'
     races = set([ws.cell(row=1,column=c).value.strip()
                  for c in range(7,ws.max_column+1)])
     choices = set([ws.cell(row=3,column=c).value.strip()
                    for c in range(4,ws.max_column+1)])
     return races, choices - set(other)
 
-def get_CVR_titles(xslx_filename,
+def get_CVR_titles(excel_file,
                    nrows = 10000, # progress every N rows iff verbose==True
                    verbose=False):
     "RETURN: dict[(race,choice)] => count"
     
-    # Row 1:: Race titles (None over columns representing choices beyond first)
-    # Row 2 to N:: Choices
-    #
-    # Col 4 to M::
+    ws = cvr.valid_CVR(excel_file)
     other = ['undervote', 'Write-in']
-    wb = load_workbook(filename=xslx_filename, read_only=True)
-    ws = wb.active
     nontitles = set(['Cast Vote Record',
                      'Serial Number',
                      'Precinct',
@@ -165,7 +166,8 @@ def main():
     print('{}\t{}'.format('SOVC','CVR'), file=args.racemap)
     numout=0
     for cvr,sovc in racelut.items():
-        if sovc != cvr:
+        #if sovc != cvr:
+        if True:
             numout += 1
             print('{}\t{}'.format(sovc,cvr), file=args.racemap)
     print('Generated {}/{} records to map RACE strings from {} to {}'
@@ -174,7 +176,8 @@ def main():
     print('{}\t{}'.format('SOVC','CVR'), file=args.choicemap)
     numout=0
     for cvr,sovc in choicelut.items():
-        if sovc != cvr:
+        #if sovc != cvr:
+        if True:
             numout += 1
             print('{}\t{}'.format(sovc,cvr), file=args.choicemap)
     print('Generated {}/{} records to map CHOICE strings from {} to {}'
