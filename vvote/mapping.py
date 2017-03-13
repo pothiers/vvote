@@ -42,25 +42,26 @@ def gen_map(sovc_xslx, lvr_xslx, verbose=False):
     racelut = dict() # lut[lvr] = sovc
     choicelut = dict() # lut[lvr] = sovc
     #!for rs,rc in itertools.product(races_sovc, races_lvr):
-    for rc in races_lvr:
-        maxsim = -1
-        maxsovc = None
-        for rs in races_sovc:
-            s = similar(rs,rc)
-            if s > maxsim:
-                maxsim = s
-                maxsovc = rs
-                racelut[rc] = maxsovc
 
-    for cc in choices_lvr:
-        maxsim = -1
-        maxsovc = None
-        for cs  in choices_sovc:
-            s = similar(cs,cc)
-            if s > maxsim:
-                maxsim = s
-                maxsovc = cs
-                choicelut[cc] = maxsovc
+    for rs in races_sovc:
+        maxscore = -1
+        maxtitle = None
+        for rc in races_lvr:
+            score = similar(rs,rc)
+            if score > maxscore:
+                maxscore = score
+                maxtitle = rs
+                racelut[rc] = (maxtitle, score)
+
+    for cs  in choices_sovc:
+        maxscore = -1
+        maxtitle = None
+        for cc in choices_lvr:
+            score = similar(cs,cc)
+            if score > maxscore:
+                maxscore = score
+                maxtitle = cs
+                choicelut[cc] = (maxtitle, score)
                 
     return racelut, choicelut
             
@@ -105,27 +106,29 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
+    #######################
+    
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         racelut, choicelut = gen_map(args.sovcfile, args.lvrfile,
                                      verbose=args.verbose)
     print('{}\t{}'.format('SOVC','LVR'), file=args.racemap)
     numout=0
-    for lvr,sovc in racelut.items():
+    for lvr,(sovc,score) in racelut.items():
         #if sovc != lvr:
         if True:
             numout += 1
-            print('{}\t{}'.format(sovc,lvr), file=args.racemap)
+            print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.racemap)
     print('Generated {}/{} records to map RACE strings from {} to {}'
           .format(numout, len(racelut), args.sovcfile, args.lvrfile))
 
     print('{}\t{}'.format('SOVC','LVR'), file=args.choicemap)
     numout=0
-    for lvr,sovc in choicelut.items():
+    for lvr,(sovc,score) in choicelut.items():
         #if sovc != lvr:
         if True:
             numout += 1
-            print('{}\t{}'.format(sovc,lvr), file=args.choicemap)
+            print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.choicemap)
     print('Generated {}/{} records to map CHOICE strings from {} to {}'
           .format(numout, len(choicelut), args.sovcfile, args.lvrfile))
 
