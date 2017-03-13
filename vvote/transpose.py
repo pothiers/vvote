@@ -5,12 +5,8 @@
 import sys
 import argparse
 import logging
-from . import sovc
 
-def transpose(in_filename, out_filename):
-    sovc.transpose(in_filename, out_filename)
-
-
+from . import excel_utils as eu
 
 ##############################################################################
 
@@ -49,7 +45,8 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
-    transpose(args.infile, args.outfile)
+
+    eu.transpose(args.intfile, args.outfile)
     
 if __name__ == '__main__':
     main()

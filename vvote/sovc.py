@@ -9,76 +9,130 @@ from collections import defaultdict
 from pprint import pprint
 
 from openpyxl import load_workbook
-from openpyxl import Workbook
 
 
+class Sovc():
+    """Maintain Statement Of Votes Cast (SOVC). Its an excel (.xslx) file
+that represents official results.
 
-def valid_SOVC(sovc_excel_filename, verbose=False):
-    # Row 1:: Race titles (duplicated over columns representing choices)
-    # Row 2:: party (we don't care)
-    # Row 3:: Choices
-    # Row 4 to N-1:: Precinct totals
-    # Row N:: Grand totals (County totals)
-    # Row N+1:: "_x001A_"  ??? End of data?
-    #
-    # Col 1:: County Number
-    # Col 2:: Precinct Code (number)
-    # Col 3:: Precinct Name (number) or "COUNTY TOTALS"
-    # Col 4:: Registered Voters-Total
-    # Col 5:: Ballots Cast-Total
-    # Col 6:: Ballots Cast-Blank
-    # Col 7 to M:: vote counts
-
+   Row 1:: Race titles (duplicated over columns representing choices)
+   Row 2:: party (we don't care)
+   Row 3:: Choices
+   Row 4 to N-1:: Precinct totals
+   Row N:: Grand totals (County totals)
+   Row N+1:: "_x001A_"  ??? End of data?
+  
+   Col 1:: County Number ('_x001A_' in last row)
+   Col 2:: Precinct Code (number)
+   Col 3:: Precinct Name (number) or "COUNTY TOTALS"
+   Col 4:: "REGISTERED VOTERS - TOTAL" (Row 1)
+   Col 5:: Ballots Cast-Total
+   Col 6:: Ballots Cast-Blank
+   Col 7 to M:: vote counts
+"""
     MARKER='_x001A_'
-    wb = load_workbook(filename=sovc_excel_filename, read_only=True)
-    ws = wb.active
-    if (ws.max_row == 1) or (ws.max_column == 1):
-        ws.max_row = ws.max_column = None
-        ws.calculate_dimension(force=True)
-    totalsrow = ws.max_row - 1        
-    if verbose:
-        print('DBG: file={}, ws.max_row = {}, ws.max_column = {}'
-              .format(sovc_excel_filename, ws.max_row, ws.max_column))
-
-    if ws.cell(row=totalsrow+1, column=1).value.strip() != MARKER:
-        msg = ('Row={}, Col={} is "{}" but expected "{}"'
-               .format(totalsrow, 1, ws.cell(row=totalsrow+1, column=1).value,
-                       MARKER ))
-        raise 'Invalid SOVC ({}); {}'.format(sovc_excel_filename, msg)
-    if ws.cell(row=totalsrow, column=3).value != 'COUNTY TOTALS':
-        msg = ('Row={}, Col={} is "{}" but expected "COUNTY TOTALS"'
-               .format(totalsrow,3, ws.cell(row=totalsrow, column=3).value))
-        raise 'Invalid SOVC ({}); {}'.format(sovc_excel_filename, msg)
-    return ws
-
-def transpose(in_xslx, out_xslx):
-    wb = load_workbook(filename=in_xslx)
-    ws = wb.active
-    wb2 = Workbook()
-    ws2 = wb2.active
-    ws2.title = 'Transposed'
-
-    for row in range(1,ws.max_row+1):
-        for col in range(1,ws.max_column+1):
-            ws2.cell(row=col, column=row,
-                     value=ws.cell(row=row, column=col).value)
-    wb2.save(filename=out_xslx)        
-
-def get_totals(xslx_filename):
-    "RETURN: dict[(race,choice)] => count"
+    MARKER2='REGISTERED VOTERS - TOTAL'
     
-    ws = valid_SOVC(xslx_filename)
-    totalsrow = ws.max_row - 1
-    assert ws.cell(row=totalsrow, column=3).value == 'COUNTY TOTALS'
-    races = [ws.cell(row=1,column=c).value.strip()
-             for c in range(4,ws.max_column+1)]
-    choices = [ws.cell(row=3,column=c).value.strip()
-               for c in range(4,ws.max_column+1)]
-    totals = [ws.cell(row=totalsrow,column=c).value
-              for c in range(4,ws.max_column+1)]
-    racechoice = zip(races,choices)
-    totdict = dict(zip(racechoice,totals))
-    return totdict
+    def __init__(self, sovc_file,
+                 nrows = 10000, # progress every N rows iff verbose==True
+                 verbose=False):
+        wb = load_workbook(filename=sovc_file, read_only=True)
+        ws = wb.active
+        if (ws.max_row == 1) or (ws.max_column == 1):
+            ws.max_row = ws.max_column = None
+            ws.calculate_dimension(force=True)
+        totalsrow = ws.max_row - 1        
+        if verbose:
+            print('DBG: file={}, ws.max_row = {}, ws.max_column = {}'
+                  .format(sovc_file, ws.max_row, ws.max_column))
+
+        # Validate format/content
+        if ws.cell(row=1, column=4).value.strip() != self.MARKER2:
+            msg = ('Row={}, Col={} is "{}" but expected "{}"'
+                   .format(1, 4,
+                           ws.cell(row=1, column=4).value,
+                           self.MARKER2 ))
+            raise 'Invalid SOVC ({}); {}'.format(sovc_file, msg)
+
+        if ws.cell(row=totalsrow+1, column=1).value.strip() != self.MARKER:
+            msg = ('Row={}, Col={} is "{}" but expected "{}"'
+                   .format(totalsrow, 1,
+                           ws.cell(row=totalsrow+1, column=1).value,
+                           self.MARKER ))
+            raise 'Invalid SOVC ({}); {}'.format(sovc_file, msg)
+        if ws.cell(row=totalsrow, column=3).value != 'COUNTY TOTALS':
+            msg = ('Row={}, Col={} is "{}" but expected "COUNTY TOTALS"'
+                   .format(totalsrow, 3,
+                           ws.cell(row=totalsrow, column=3).value))
+            raise 'Invalid SOVC ({}); {}'.format(sovc_file, msg)
+
+        self.filename = sovc_file
+        self.totalsrow = totalsrow
+        self.ws = ws
+        self.max_row = ws.max_row
+        self.max_column = ws.max_column
+
+
+    def get_totals(self):
+        "RETURN: dict[(race,choice)] => count"
+        races = [self.ws.cell(row=1, column=c).value.strip()
+                 for c in range(4, self.max_column+1)]
+        choices = [self.ws.cell(row=3, column=c).value.strip()
+                   for c in range(4, self.max_column+1)]
+        totals = [self.ws.cell(row=self.totalsrow, column=c).value
+                  for c in range(4, self.max_column+1)]
+        racechoice = zip(races, choices)
+        totdict = dict(zip(racechoice, totals))
+        return totdict
+
+    def compare(self, votes, choices, n_votes):
+        print('Comparing calculated vote counts to those from {}'
+              .format(self.filename))
+        sovc2ballot = dict()
+        ballot2sovc = dict()
+
+        totdict = self.get_totals()
+        sovcraces = set([sovc2ballot.get(race,race)
+                         for race,choice in totdict.keys()])
+        balraces = set(votes.keys())
+
+        for race in sovcraces - balraces:
+                print('ERROR: Ballot votes do not contain race "{}".'
+                      .format(race))
+        for race in balraces - sovcraces:
+                print('ERROR: SOVC votes do not contain race "{}".'
+                      .format(race))
+
+        for race in sovcraces & balraces:
+            sovcchoices = set([sovc2ballot.get(choice,choice)
+                               for r,choice in totdict.keys() if r == race])
+            balchoices = set(choices[race])
+            for choice in sovcchoices - balchoices:
+                print('ERROR: Ballot choices for race "{}" do not contain "{}".'
+                      .format(race, choice))
+            for choice in balchoices - sovcchoices :
+                print('ERROR: SOVC choices for race "{}" do not contain "{}".'
+                      .format(race, choice))
+            for choice in sovcchoices & balchoices :
+                sovccount = totdict[(ballot2sovc.get(race,race),
+                                     ballot2sovc.get(choice,choice))]
+                if votes[race][choice] != sovccount:
+                    print(('ERROR: vote counts do not agree for {}. '
+                          'sovc={}, calc={}')
+                          .format((race, choice),
+                                  sovccount,
+                                  votes[race][choice]))
+
+    def get_titles(self):
+        "RETURN: dict[(race,choice)] => count"
+
+        other = ['BALLOTS CAST', 'OVER VOTES', 'UNDER VOTES',
+                 'VOTERS', 'WRITE-IN']
+        races = set([self.ws.cell(row=1, column=c).value.strip()
+                     for c in range(7, self.max_column+1)])
+        choices = set([self.ws.cell(row=3, column=c).value.strip()
+                       for c in range(4, self.max_column+1)])
+        return races, choices - set(other)
 
 ##############################################################################
 
@@ -119,7 +173,8 @@ def main():
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
     print('Reading counts from file: "{}"'.format(args.infile))
-    totdict = get_totals(args.infile)
+    sovc = Sovc(args.infile)
+    totdict = sovc.get_totals()
     print('Totals = ',)
     pprint(totdict)
 

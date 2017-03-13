@@ -6,12 +6,12 @@ import sys
 import argparse
 import logging
 import sqlite3
-import copy
-from collections import defaultdict
 
 from openpyxl import load_workbook
 from openpyxl import Workbook
-from . import sovc
+from .sovc import Sovc
+from .lvr import Lvr
+from . import excel_utils as eu
 
 
 #!ballot2sovc = {
@@ -35,37 +35,6 @@ from . import sovc
 
             
 
-def compare_sovc(sovcfile, votes, choices, n_votes):
-    print('Comparing calculated vote counts to those from {}'.format(sovcfile))
-    sovc2ballot = dict()
-    ballot2sovc = dict()
-
-    totdict = sovc.get_totals(sovcfile)
-    sovcraces = set([sovc2ballot.get(race,race)
-                     for race,choice in totdict.keys()])
-    balraces = set(votes.keys())
-
-    for race in sovcraces - balraces:
-            print('ERROR: Ballot votes do not contain race "{}".'.format(race))
-    for race in balraces - sovcraces:
-            print('ERROR: SOVC votes do not contain race "{}".'.format(race))
-        
-    for race in sovcraces & balraces:
-        sovcchoices = set([sovc2ballot.get(choice,choice)
-                           for r,choice in totdict.keys() if r == race])
-        balchoices = set(choices[race])
-        for choice in sovcchoices - balchoices:
-            print('ERROR: Ballot choices for race "{}" do not contain "{}".'
-                  .format(race, choice))
-        for choice in balchoices - sovcchoices :
-            print('ERROR: SOVC choices for race "{}" do not contain "{}".'
-                  .format(race, choice))
-        for choice in sovcchoices & balchoices :
-            sovccount = totdict[(ballot2sovc.get(race,race),
-                                 ballot2sovc.get(choice,choice))]
-            if votes[race][choice] != sovccount:
-                print('ERROR: vote counts do not agree for {}. sovc={}, calc={}'
-                      .format((race,choice), sovccount, votes[race][choice] ))
 
 def emit_results(votes, choices, n_votes, num_ballots,
                  orderedraces=None,
@@ -216,7 +185,7 @@ def write_sovc(votes, choices, n_votes, sovcfilename,
             ws.cell(column=col, row=4, value="{}".format(count))
             col += 1
     wb.save(sovcfilename)
-    sovc.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
+    eu.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
 
 
 def clean_choice(choice):
@@ -227,112 +196,6 @@ def clean_choice(choice):
         return choice[4:]
     return choice.strip()
     
-def count_votes(xslx_filename,
-                verbose=False,
-                nrows = 10000, # progress every N rows iff verbose==True
-                na_tag='<OOD>', # Out of District Ballots
-                writeintag='Write-in',
-                overvotetag='overvote',
-                undervotetag='undervote'):
-    if verbose:
-        print('# VERBOSE enabled')
-    wb = load_workbook(filename=xslx_filename, read_only=True)
-    ws = wb.active
-    if (ws.max_row == 1) or (ws.max_column == 1):
-        ws.max_row = ws.max_column = None
-        # unzip -p /data/mock-election/Final_Count_LVR.xlsx | grep dimension
-        ws.calculate_dimension(force=True)
-    #!print('# maxCol={}, maxRow={}'.format(ws.max_column, ws.max_row))
-    nontitles = set(['Cast Vote Record',
-                     'Serial Number',
-                     'Precinct',
-                     'Ballot Style'])
-    choices = defaultdict(set) # choices[race] = set([choice1, choice2,...])
-    orderedchoices = dict() # d[race] => [choice1, ...]
-    raceballot = list() # single ballot for single race, list(choice1, ...])
-    votes = defaultdict(lambda : defaultdict(int)) # votes[race][choice] = cnt
-    n_votes = defaultdict(int)  # n_votes[race] => num-to-vote-for
-
-    coltitle = dict() # coltitle[column] => racetitle
-    orderedraces = list()
-    prevtitle = None
-    ridx = 0
-    for row in ws.rows:
-        ridx += 1
-        cidx = 0
-        if verbose:
-            if (ridx % nrows) == 0:
-                print('# processed {} ballots'.format(ridx))
-        for cell in row:
-            cidx += 1
-            #print('# DBG-0: ridx={} cidx{}'.format(ridx,cidx))
-
-            # Ignore the (leading) columns that are not Race Titles
-            if ridx == 1 and cell.value in nontitles:
-                continue
-            
-            if ridx == 1: # header
-                if cell.value != None:
-                    race = cell.value.strip()
-                    orderedraces.append(race)
-                    n_votes[race] = 1
-                    #!choices[race].add(overvotetag)
-                    #!choices[race].add(writeintag)
-                    #!choices[race].add(na_tag)
-                else: # vote-for-N race
-                    n_votes[race] += 1
-                coltitle[cidx] = race
-            else: # ballots
-                if cidx not in coltitle:
-                    # Skip columns we don't care about
-                    continue
-                
-                if (cell.value == '' or cell.value == None):
-                    choice = na_tag
-                else:
-                    #choice = clean_choice(cell.value)
-                    choice = cell.value
-                race = coltitle[cidx]
-                next_race = coltitle[cidx+1] if cidx < ws.max_column else None
-                #print('# DBG-0: race="{}"'.format(race))
-                raceballot.append(choice)
-                if race != next_race: # finished one race, one ballot
-                    #print('DBG-1: raceballot={}'.format(raceballot))
-                    if undervotetag in raceballot:
-                        undervote_m = ('undervote-{}'
-                                       .format(raceballot.count(undervotetag)))
-                        votes[race][undervote_m] += 1
-                        #!choices[race].add(undervote_m)
-                        raceballot.append(undervote_m)
-                    if overvotetag in raceballot:
-                        assert raceballot.count(overvotetag) == n_votes[race]
-                        votes[race][overvotetag] += 1
-                    if na_tag in raceballot:
-                        assert raceballot.count(na_tag) == n_votes[race]
-                        votes[race][na_tag] += 1
-                    for c in raceballot:
-                        if c == writeintag:
-                            #!choices[race].add(c)
-                            votes[race][c] += 1                            
-                    raceballot = [c for c in raceballot
-                                  if ((c != undervotetag)
-                                      and (c != overvotetag)
-                                      and (c != na_tag)
-                                      and (c != writeintag)
-                                  )]
-                    # no dupes
-                    assert len(raceballot) == len(set(raceballot)), 'Duplicates in: {}'.format(raceballot)
-    
-                    for choice in set(raceballot):
-                        choices[race].add(choice)
-                        votes[race][choice] += 1
-                    orderedchoices[race] = copy.copy(raceballot)
-                    raceballot = list() # single ballot for single race
-
-    nballots = ridx-1
-    print('Processed {} ballots'.format(nballots))
-    return votes, choices, n_votes, nballots, orderedraces, orderedchoices
-
 
 
 
@@ -347,8 +210,8 @@ def main():
         #  (49418 ballots)
         )
     parser.add_argument('--version', action='version', version='1.0.1')
-    parser.add_argument('infile', type=argparse.FileType('r'),
-                        help='Input file')
+    parser.add_argument('LVRfile', type=argparse.FileType('r'),
+                        help='Input LVR excel (.xslx) file')
     parser.add_argument('outfile', type=argparse.FileType('w'),
                         help='Vote count output (SOVC equiv)')
 
@@ -370,8 +233,8 @@ def main():
                                  'INFO', 'DEBUG'],
                         default='WARNING')
     args = parser.parse_args()
-    args.infile.close()
-    args.infile = args.infile.name
+    args.LVRfile.close()
+    args.LVRfile = args.LVRfile.name
     args.outfile.close()
     args.outfile = args.outfile.name
     if args.sovc:
@@ -385,9 +248,11 @@ def main():
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
-    print('# Counting votes from file: {}'.format(args.infile))
+
+    print('# Counting votes from file: {}'.format(args.LVRfile))
+    lvr = Lvr(args.LVRfile)
     (votes, choices, n_votes, nballots, races, ochoices
-    ) = count_votes(args.infile, verbose=args.verbose)
+    ) = lvr.count_votes(verbose=args.verbose)
     # Vote counts now in: votes
     if args.format == 'text':
         emit_results(votes, choices, n_votes, nballots,
@@ -398,7 +263,8 @@ def main():
                    orderedraces=races, orderedchoices=ochoices)
         
     if args.sovc != None:
-        compare_sovc(args.sovc, votes, choices, n_votes)
+        sovc = Sovc(args.sovc)
+        sovc.compare(votes, choices, n_votes)
 
 if __name__ == '__main__':
     main()
