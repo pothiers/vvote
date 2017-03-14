@@ -169,9 +169,8 @@ that represents contents from a set of ballots.
                 if ridx == 1: # header
                     if cell.value != None:
                         races.add(cell.value.strip())
-
                 else: #ballots
                     if (cell.value == '' or cell.value == None or cell.value.strip() == ''):
                         continue
                     choices.add(cell.value.strip())
-        return races, choices - set(other)
+        return races, (choices - set(other))

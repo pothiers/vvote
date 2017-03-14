@@ -123,16 +123,17 @@ that represents official results.
                                   sovccount,
                                   votes[race][choice]))
 
-    def get_titles(self):
-        "RETURN: dict[(race,choice)] => count"
+    def get_races(self):
+        return set([self.ws.cell(row=1, column=c).value.strip()
+                   for c in range(7, self.max_column+1)])
 
+    def get_choices(self):
         other = ['BALLOTS CAST', 'OVER VOTES', 'UNDER VOTES',
                  'VOTERS', 'WRITE-IN']
-        races = set([self.ws.cell(row=1, column=c).value.strip()
-                     for c in range(7, self.max_column+1)])
         choices = set([self.ws.cell(row=3, column=c).value.strip()
                        for c in range(4, self.max_column+1)])
-        return races, choices - set(other)
+        #!return choices - set(other)
+        return choices
 
 ##############################################################################
 

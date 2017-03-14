@@ -25,45 +25,65 @@ from .lvr import Lvr
 def similar(a, b):
     "Symetric similarity.  Higher number is more similar."
     if a == b:
-        return 99999
+        return 999
     #!return SequenceMatcher(a=a, b=b).ratio()+SequenceMatcher(a=b, b=a).ratio()
     return max(SequenceMatcher(a=a, b=b).ratio(),
                SequenceMatcher(a=b, b=a).ratio())
 
             
 
-def gen_map(sovc_xslx, lvr_xslx, verbose=False):
+def gen_map(sovc_xslx, lvr_xslx,
+            verbose=False,
+            racematrix='racematrix.csv',
+            choicematrix='choicematrix.csv'):
     if verbose:
         print('Verbose enabled for: gen_map')
+
     sovc = Sovc(sovc_xslx)
-    races_sovc, choices_sovc = sovc.get_titles()
+    races_sovc = sovc.get_races()
+    choices_sovc = sovc.get_choices()
+
     lvr = Lvr(lvr_xslx)
-    races_lvr, choices_lvr = lvr.get_titles(verbose=verbose)
-    racelut = dict() # lut[lvr] = sovc
-    choicelut = dict() # lut[lvr] = sovc
-    #!for rs,rc in itertools.product(races_sovc, races_lvr):
+    races_lvr,choices_lvr = lvr.get_titles(verbose=verbose)
 
-    for rs in races_sovc:
+    if racematrix != None:
+        with open(racematrix, mode='w') as rm:
+            print('RACE matrix (SOVC, LVR, score); tab delimitted', file=rm)
+            for rsovc,rlvr in itertools.product(races_sovc, races_lvr):
+                print('{}\t{}\t{}'.format(rsovc, rlvr, similar(rsovc,rlvr)),
+                      file=rm)
+        print('Wrote race mapping matrix to: {}'.format(racematrix))
+    if choicematrix != None:
+        with open(choicematrix, mode='w') as cm:
+            print('CHOICE matrix (SOVC, LVR, score); tab delimitted', file=cm)
+            for csovc,clvr in itertools.product(choices_sovc, choices_lvr):
+                print('{}\t{}\t{}'.format(csovc, clvr, similar(csovc,clvr)),
+                      file=cm)
+        print('Wrote choice mapping matrix to: {}'.format(choicematrix))
+            
+    race_table = list() # [(sovc, lvr, score), ...]
+    for rsovc in races_sovc:
         maxscore = -1
-        maxtitle = None
-        for rc in races_lvr:
-            score = similar(rs,rc)
+        best = None
+        for rlvr in races_lvr:
+            score = similar(rsovc,rlvr)
             if score > maxscore:
                 maxscore = score
-                maxtitle = rs
-                racelut[rc] = (maxtitle, score)
+                best = rlvr
+        race_table.append((rsovc, best, score))
 
-    for cs  in choices_sovc:
+    choice_table = list() # [(sovc, lvr, score), ...]
+    for csovc  in choices_sovc:
         maxscore = -1
-        maxtitle = None
-        for cc in choices_lvr:
-            score = similar(cs,cc)
+        best = None
+        for clvr in choices_lvr:
+            score = similar(csovc,clvr)
             if score > maxscore:
                 maxscore = score
-                maxtitle = cs
-                choicelut[cc] = (maxtitle, score)
+                best = clvr
+        choice_table.append((csovc, best, score))
                 
-    return racelut, choicelut
+    return race_table, choice_table
             
 ##############################################################################
 
@@ -110,27 +130,27 @@ def main():
     
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        racelut, choicelut = gen_map(args.sovcfile, args.lvrfile,
+        race_table, choice_table = gen_map(args.sovcfile, args.lvrfile,
                                      verbose=args.verbose)
     print('{}\t{}'.format('SOVC','LVR'), file=args.racemap)
     numout=0
-    for lvr,(sovc,score) in racelut.items():
+    for (sovc,lvr,score) in race_table:
         #if sovc != lvr:
         if True:
             numout += 1
             print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.racemap)
     print('Generated {}/{} records to map RACE strings from {} to {}'
-          .format(numout, len(racelut), args.sovcfile, args.lvrfile))
+          .format(numout, len(race_table), args.sovcfile, args.lvrfile))
 
     print('{}\t{}'.format('SOVC','LVR'), file=args.choicemap)
     numout=0
-    for lvr,(sovc,score) in choicelut.items():
+    for (sovc, lvr, score) in choice_table:
         #if sovc != lvr:
         if True:
             numout += 1
             print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.choicemap)
     print('Generated {}/{} records to map CHOICE strings from {} to {}'
-          .format(numout, len(choicelut), args.sovcfile, args.lvrfile))
+          .format(numout, len(choice_table), args.sovcfile, args.lvrfile))
 
 if __name__ == '__main__':
     main()
