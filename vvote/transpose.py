@@ -15,7 +15,7 @@ def main():
     #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='Transpose rows/columns from one Excel file to another',
-        epilog='EXAMPLE: %(prog)s in.xlsx transposed.xlsx"'
+        epilog='EXAMPLE: %(prog)s in.xlsx transposed.xlsx'
         )
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('infile', type=argparse.FileType('r'),

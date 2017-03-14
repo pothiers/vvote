@@ -142,7 +142,7 @@ def main():
     #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='Extract from Statement Of Votes Cast',
-        epilog='EXAMPLE: %(prog)s sovc.xslx"'
+        epilog='EXAMPLE: %(prog)s sovc.xslx'
         )
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('infile', type=argparse.FileType('r'),

@@ -49,8 +49,8 @@ def main():
     "Parse command line arguments and do the work."
     #!print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        description='My shiny new python program',
-        epilog='EXAMPLE: %(prog)s a b"'
+        description='Convert Excel (.xslx) to CSV (Comma Prated Values)',
+        epilog='EXAMPLE: %(prog)s in.xslx out.csv'
         )
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('xlsxfile', type=argparse.FileType('rb'),

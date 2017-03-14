@@ -92,7 +92,7 @@ def main():
     #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='Create string mapping (SOVC to LVR)',
-        epilog='EXAMPLE: %(prog)s sovc.xslx lvr.xslx"'
+        epilog='EXAMPLE: %(prog)s sovc.xslx lvr.xslx'
         )
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('sovcfile', type=argparse.FileType('r'),
