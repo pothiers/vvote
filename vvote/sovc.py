@@ -85,7 +85,8 @@ that represents official results.
         totdict = dict(zip(racechoice, totals))
         return totdict
 
-    def compare(self, votes, choices, n_votes):
+    def compare(self, votes, choices, n_votes,
+                race_map=None, choice_map=None):
         print('Comparing calculated vote counts to those from {}'
               .format(self.filename))
         sovc2ballot = dict()

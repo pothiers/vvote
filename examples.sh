@@ -27,4 +27,5 @@ countvote -v --format text $data/day1-lvr.xlsx day1.txt
 countvote --format SOVC $data/2016GenSampleSet-400.lvr.xlsx 2016GenSampleSet-400.sovc.xlsx 
 
 # UNDER-CONSTRUCTION!!!
+# see vvote/sovc.py
 comparesovc --racemap rm.csv --choicemap cm.csv 2016GenSampleSet-400.sovc.xlsx $data/2016GenSampleSet-400.sovc.xlsx
