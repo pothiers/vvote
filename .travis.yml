@@ -15,6 +15,6 @@ python:
 install:
   - pip install -r requirements.txt
   - python3 setup.py install
-  - ./install.sh
+
 # command to run tests
 script: ./smoke-test.sh
