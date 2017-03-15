@@ -35,9 +35,9 @@ def similar(x,y):
             
 
 def gen_map(sovc_xslx, lvr_xslx,
-            verbose=False,
-            racematrix='racematrix.csv',
-            choicematrix='choicematrix.csv'):
+            racematrix=None, # 'racematrix.csv',
+            choicematrix=None, # 'choicematrix.csv'
+            verbose=False):
     if verbose:
         print('Verbose enabled for: gen_map')
 
@@ -50,14 +50,14 @@ def gen_map(sovc_xslx, lvr_xslx,
 
     if racematrix != None:
         with open(racematrix, mode='w') as rm:
-            print('RACE matrix (SOVC, LVR, score); tab delimitted', file=rm)
+            print('{}\t{}\t{}'.format('Race SOVC', 'LVR', 'Score', file=rm))
             for rsovc,rlvr in itertools.product(races_sovc, races_lvr):
                 print('{}\t{}\t{}'.format(rsovc, rlvr, similar(rsovc,rlvr)),
                       file=rm)
         print('Wrote race mapping matrix to: {}'.format(racematrix))
     if choicematrix != None:
         with open(choicematrix, mode='w') as cm:
-            print('CHOICE matrix (SOVC, LVR, score); tab delimitted', file=cm)
+            print('{}\t{}\t{}'.format('Choice SOVC', 'LVR', 'Score', file=rm))
             for csovc,clvr in itertools.product(choices_sovc, choices_lvr):
                 print('{}\t{}\t{}'.format(csovc, clvr, similar(csovc,clvr)),
                       file=cm)
@@ -73,7 +73,7 @@ def gen_map(sovc_xslx, lvr_xslx,
                 maxscore = score
                 #! best = rlvr
                 best = rlvr if score > 0.5 else ''
-        race_table.append((rsovc, best, score))
+        race_table.append((rsovc, best, maxscore))
 
     choice_table = list() # [(sovc, lvr, score), ...]
     for csovc  in choices_sovc:
@@ -85,7 +85,7 @@ def gen_map(sovc_xslx, lvr_xslx,
                 maxscore = score
                 #! best = clvr
                 best = clvr if score > 0.5 else ''
-        choice_table.append((csovc, best, score))
+        choice_table.append((csovc, best, maxscore))
                 
     return race_table, choice_table
             
@@ -136,7 +136,7 @@ def main():
         warnings.simplefilter("ignore")
         race_table, choice_table = gen_map(args.sovcfile, args.lvrfile,
                                      verbose=args.verbose)
-    print('{}\t{}'.format('SOVC','LVR'), file=args.racemap)
+    print('{}\t{}\t{}'.format('SOVC','LVR', 'Score'), file=args.racemap)
     numout=0
     for (sovc,lvr,score) in race_table:
         #if sovc != lvr:
@@ -146,7 +146,7 @@ def main():
     print('Generated {}/{} records to map RACE strings from {} to {}'
           .format(numout, len(race_table), args.sovcfile, args.lvrfile))
 
-    print('{}\t{}'.format('SOVC','LVR'), file=args.choicemap)
+    print('{}\t{}\t{}'.format('SOVC','LVR', 'Score'), file=args.choicemap)
     numout=0
     for (sovc, lvr, score) in choice_table:
         #if sovc != lvr:
