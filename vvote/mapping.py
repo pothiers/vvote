@@ -22,8 +22,10 @@ from .sovc import Sovc
 from .lvr import Lvr
 
 
-def similar(a, b):
+def similar(x,y):
     "Symetric similarity.  Higher number is more similar."
+    a = x.replace(' ','')
+    b = y.replace(' ','')
     if a == b:
         return 999
     #!return SequenceMatcher(a=a, b=b).ratio()+SequenceMatcher(a=b, b=a).ratio()
@@ -69,7 +71,8 @@ def gen_map(sovc_xslx, lvr_xslx,
             score = similar(rsovc,rlvr)
             if score > maxscore:
                 maxscore = score
-                best = rlvr
+                #! best = rlvr
+                best = rlvr if score > 0.5 else ''
         race_table.append((rsovc, best, score))
 
     choice_table = list() # [(sovc, lvr, score), ...]
@@ -80,7 +83,8 @@ def gen_map(sovc_xslx, lvr_xslx,
             score = similar(csovc,clvr)
             if score > maxscore:
                 maxscore = score
-                best = clvr
+                #! best = clvr
+                best = clvr if score > 0.5 else ''
         choice_table.append((csovc, best, score))
                 
     return race_table, choice_table
