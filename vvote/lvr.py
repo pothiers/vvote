@@ -192,8 +192,8 @@ that represents contents from a set of ballots.
             file=sys.stdout
         else:
             file = open(outputfile, mode='w')
-
-        preclist = ['ALL'] if totals_only else self.precincts 
+        plist = sorted(list((p for p in self.precincts if p != 'ALL')))
+        preclist = ['ALL'] if totals_only else (plist + ['ALL'])
         for prec in preclist:
             for race in orderedraces:
                 rp = (race,prec) 
@@ -256,7 +256,6 @@ that represents contents from a set of ballots.
 
         ws['B4'] = 'ZZZ'
         ws['C4'] = 'COUNTY TOTALS'
-        ws['A5'] = '_x001A_'
 
         col = 7
         ignore_choices = set([na_tag])
@@ -276,22 +275,32 @@ that represents contents from a set of ballots.
             for choice in orderedchoices[race]:
                 if choice in ignore_choices:
                     continue
-                ws.cell(column=col, row=1, value="{}".format(race))
-                ws.cell(column=col, row=3, value="{}".format(choice))
+                ws.cell(column=col, row=1).value = race
+                ws.cell(column=col, row=3).value = choice
                 #!count = votes[race][choice]
                 #!if choice == 'overvote':
                 #!    count *= nvotes
-                #!ws.cell(column=col, row=4, value="{}".format(count))
+                #!ws.cell(column=col, row=4).value = count
                 r=4
-                for prec in self.precincts:
+                prec_list = sorted(self.precincts - {'ALL'})
+                for prec in prec_list:
                     rp = (race,prec) 
                     count = votes[rp][choice]
                     if choice == 'overvote':
                         count *= nvotes
-                    ws.cell(column=col, row=r, value="{}".format(count))
-                    ws.cell(column=2, row=r, value="{}".format(prec))
-                    ws.cell(column=3, row=r, value="{}".format(prec))
+                    ws.cell(column=col, row=r).value = count
+                    ws.cell(column=2, row=r).value = prec
+                    ws.cell(column=3, row=r).value = prec
                     r += 1
+                prec = 'ALL'
+                rp = (race,prec) 
+                count = votes[rp][choice]
+                if choice == 'overvote':
+                    count *= nvotes
+                ws.cell(column=col, row=r).value = count
+                ws.cell(column=2, row=r).value = prec
+                ws.cell(column=3, row=r).value = prec
+                ws.cell(column=1, row=r+1).value = '_x001A_'
                 col += 1
         wb.save(sovcfilename)
         eu.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))

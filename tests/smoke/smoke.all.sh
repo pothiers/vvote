@@ -28,11 +28,16 @@ echo ""
 # Stripped data. Just 400 ballots
 mkdir -p ~/.vvote_output 2> /dev/null
 tmpexcel="$HOME/.vvote_output/tmp.xlsx"
+LVR="$data/2016GenSampleSet-400.lvr.xlsx"
+
+# simple vote count output (with precincts) to stdout
+testCommand vv1_1 "countvote $LVR" "^\#" n
 
 sovcout="$HOME/.vvote_output/2016GenSampleSet-400.sovc.csv"
-testCommand vv2_1 "countvote -f SOVC -t $tmpexcel $data/2016GenSampleSet-400.lvr.xlsx " "^\#"
+testCommand vv2_1 "countvote -f SOVC -t $tmpexcel $LVR" "^\#"
 xls2csv --transpose $tmpexcel $sovcout
 testOutput vv2_1_out $sovcout
+
 
 #!txtout="$HOME/.vvout_output/2016GenSampleSet-sovc.txt"
 #!testCommand vv3_1 "countvote $data/2016GenSampleSet.xlsx $txtout"
