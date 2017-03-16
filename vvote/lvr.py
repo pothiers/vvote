@@ -299,8 +299,8 @@ that represents contents from a set of ballots.
                 if choice == 'overvote':
                     count *= nvotes
                 ws.cell(column=col, row=r).value = count
-                ws.cell(column=2, row=r).value = prec
-                ws.cell(column=3, row=r).value = prec
+                ws.cell(column=2, row=r).value =  'ZZZ'
+                ws.cell(column=3, row=r).value = 'COUNTY TOTALS'
                 ws.cell(column=1, row=r+1).value = '_x001A_'
                 col += 1
         wb.save(sovcfilename)

@@ -87,7 +87,7 @@ def gen_map(sovc_xslx, lvr_xslx,
                 best = clvr if score > 0.5 else ''
         choice_table.append((csovc, best, maxscore))
                 
-    return race_table, choice_table
+    return sorted(race_table), sorted(choice_table)
             
 ##############################################################################
 
@@ -136,23 +136,27 @@ def main():
         warnings.simplefilter("ignore")
         race_table, choice_table = gen_map(args.sovcfile, args.lvrfile,
                                      verbose=args.verbose)
-    print('{}\t{}\t{}'.format('SOVC','LVR', 'Score'), file=args.racemap)
+    #!print('{}\t{}\t{}'.format('SOVC','LVR', 'Score'), file=args.racemap) 
+    print('{}\t{}'.format('SOVC','LVR'), file=args.racemap) 
     numout=0
     for (sovc,lvr,score) in race_table:
         #if sovc != lvr:
         if True:
             numout += 1
-            print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.racemap)
+            #!print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.racemap)
+            print('{}\t{}'.format(sovc, lvr), file=args.racemap)
     print('Generated {}/{} records to map RACE strings from {} to {}'
           .format(numout, len(race_table), args.sovcfile, args.lvrfile))
 
-    print('{}\t{}\t{}'.format('SOVC','LVR', 'Score'), file=args.choicemap)
+    #!print('{}\t{}\t{}'.format('SOVC','LVR', 'Score'), file=args.choicemap)
+    print('{}\t{}'.format('SOVC','LVR'), file=args.choicemap)
     numout=0
     for (sovc, lvr, score) in choice_table:
         #if sovc != lvr:
         if True:
             numout += 1
-            print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.choicemap)
+            #!print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.choicemap)
+            print('{}\t{}'.format(sovc, lvr), file=args.choicemap)
     print('Generated {}/{} records to map CHOICE strings from {} to {}'
           .format(numout, len(choice_table), args.sovcfile, args.lvrfile))
 

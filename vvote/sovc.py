@@ -9,6 +9,7 @@ from collections import defaultdict
 from pprint import pprint
 
 from openpyxl import load_workbook
+from . import exceptions as ex
 
 
 class Sovc():
@@ -52,19 +53,19 @@ that represents official results.
                    .format(1, 4,
                            ws.cell(row=1, column=4).value,
                            self.MARKER2 ))
-            raise 'Invalid SOVC ({}); {}'.format(sovc_file, msg)
+            raise ex.BadSovc('Invalid SOVC ({}); {}'.format(sovc_file, msg))
 
         if ws.cell(row=totalsrow+1, column=1).value.strip() != self.MARKER:
             msg = ('Row={}, Col={} is "{}" but expected "{}"'
                    .format(totalsrow, 1,
                            ws.cell(row=totalsrow+1, column=1).value,
                            self.MARKER ))
-            raise 'Invalid SOVC ({}); {}'.format(sovc_file, msg)
+            raise  ex.BadSovc('Invalid SOVC ({}); {}'.format(sovc_file, msg))
         if ws.cell(row=totalsrow, column=3).value != 'COUNTY TOTALS':
             msg = ('Row={}, Col={} is "{}" but expected "COUNTY TOTALS"'
                    .format(totalsrow, 3,
                            ws.cell(row=totalsrow, column=3).value))
-            raise 'Invalid SOVC ({}); {}'.format(sovc_file, msg)
+            raise ex.BadSovc('Invalid SOVC ({}); {}'.format(sovc_file, msg))
 
         self.filename = sovc_file
         self.totalsrow = totalsrow

@@ -92,6 +92,7 @@ setup(
             'transpose=vvote.transpose:main',
             'genmap=vvote.mapping:main',
             'xls2csv=vvote.xlsx2csv:main',
+            'compare=vvote.comparesovc:main',
         ],
     },
 )

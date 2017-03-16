@@ -27,17 +27,26 @@ echo ""
 
 # Stripped data. Just 400 ballots
 mkdir -p ~/.vvote_output 2> /dev/null
-tmpexcel="$HOME/.vvote_output/tmp.xlsx"
 LVR="$data/2016GenSampleSet-400.lvr.xlsx"
 
 # simple vote count output (with precincts) to stdout
 testCommand vv1_1 "countvote $LVR" "^\#" n
 
+genSOVC="$HOME/.vvote_output/2016GenSampleSet-400.sovc.xlsx"
 sovcout="$HOME/.vvote_output/2016GenSampleSet-400.sovc.csv"
-testCommand vv2_1 "countvote -f SOVC -t $tmpexcel $LVR" "^\#"
-xls2csv --transpose $tmpexcel $sovcout
+testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#"
+xls2csv --transpose $genSOVC $sovcout
 testOutput vv2_1_out $sovcout
- 
+#testOutput vv2_2_out $genSOVC
+
+racemap="$HOME/.vvote_output/2016GenSampleSet-racemap.csv"
+choicemap="$HOME/.vvote_output/2016GenSampleSet-choicemap.csv"
+testCommand vv3_1 "genmap $genSOVC $LVR $racemap $choicemap" "^\#"
+testOutput vv3_2_out $racemap
+testOutput vv3_3_out $choicemap
+
+
+
 ###########################################
 #echo "WARNING: ignoring remainder of tests"
 #exit $return_code
