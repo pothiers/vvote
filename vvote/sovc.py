@@ -72,7 +72,6 @@ that represents official results.
         self.max_row = ws.max_row
         self.max_column = ws.max_column
 
-
     def get_totals(self):
         "RETURN: dict[(race,choice)] => count"
         races = [self.ws.cell(row=1, column=c).value.strip()
@@ -84,47 +83,6 @@ that represents official results.
         racechoice = zip(races, choices)
         totdict = dict(zip(racechoice, totals))
         return totdict
-
-    def compare(self, votes, choices, n_votes,
-                race_map=None, choice_map=None,
-                verbose=False):
-        """Compare SOVC to talley of votes in LVR file."""
-        print('Comparing calculated vote counts to those from {}'
-              .format(self.filename))
-        sovc2ballot = dict()
-        ballot2sovc = dict()
-
-        totdict = self.get_totals()
-        sovcraces = set([sovc2ballot.get(race,race)
-                         for race,choice in totdict.keys()])
-        balraces = set(votes.keys())
-
-        for race in sovcraces - balraces:
-                print('ERROR: Ballot votes do not contain race "{}".'
-                      .format(race))
-        for race in balraces - sovcraces:
-                print('ERROR: SOVC votes do not contain race "{}".'
-                      .format(race))
-
-        for race in sovcraces & balraces:
-            sovcchoices = set([sovc2ballot.get(choice,choice)
-                               for r,choice in totdict.keys() if r == race])
-            balchoices = set(choices[race])
-            for choice in sovcchoices - balchoices:
-                print('ERROR: Ballot choices for race "{}" do not contain "{}".'
-                      .format(race, choice))
-            for choice in balchoices - sovcchoices :
-                print('ERROR: SOVC choices for race "{}" do not contain "{}".'
-                      .format(race, choice))
-            for choice in sovcchoices & balchoices :
-                sovccount = totdict[(ballot2sovc.get(race,race),
-                                     ballot2sovc.get(choice,choice))]
-                if votes[race][choice] != sovccount:
-                    print(('ERROR: vote counts do not agree for {}. '
-                          'sovc={}, calc={}')
-                          .format((race, choice),
-                                  sovccount,
-                                  votes[race][choice]))
 
     def get_races(self):
         return set([self.ws.cell(row=1, column=c).value.strip()
@@ -138,6 +96,13 @@ that represents official results.
         #!return choices - set(other)
         return choices
 
+    def get_race_choices(self, race):
+        choices = set()
+        for (r,c) in self.get_totals().keys():
+            if r == race:
+                choices.add(c)
+        return choices
+    
 ##############################################################################
 
 def main():

@@ -119,6 +119,11 @@ def main():
                         help='Format of output talley file.',
                         choices=['text', 'SOVC'],
                         default='text')
+    parser.add_argument('-c', '--choice_map',
+                        help='CSV input mapping SOVC to LVR choice names')
+    parser.add_argument('-r', '--race_map',
+                        help='CSV input mapping SOVC to LVR race names')
+                        
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         help='Output progress')
@@ -156,8 +161,11 @@ def main():
         lvr.write_sovc(args.talley)
         
     if args.sovc != None:
-        sovc = Sovc(args.sovc)
-        sovc.compare(lvr.votes, lvr.choices, lvr.n_votes)
+        #! sovc = Sovc(args.sovc)
+        lvr.compare(args.sovc,
+                    choice_map=args.choice_map,
+                    race_map=args.race_map)
+
 
 if __name__ == '__main__':
     main()

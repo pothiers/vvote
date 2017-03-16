@@ -9,7 +9,8 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 
 from . import excel_utils as eu
-
+from . import utils as ut
+from .sovc import Sovc
 
 class Lvr():
     """Maintain List of Vote Records (LVR). Its an excel (.xslx) file
@@ -304,6 +305,65 @@ that represents contents from a set of ballots.
                 col += 1
         wb.save(sovcfilename)
         eu.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
+
+    def compare(self, sovcfilename,
+                race_map=None, choice_map=None,
+                verbose=False):
+        """Compare talley of votes to official SOVC file. Report on diffs"""
+        print('Comparing calculated vote counts to those from {}'
+              .format(sovcfilename))
+        votes = self.votes
+        choices = self.choices
+        n_votes = self.n_votes
+
+        #!sovc2ballot = dict()
+        #!ballot2sovc = dict()
+        #!totdict = self.get_totals()
+        #!sovcraces = set([sovc2ballot.get(race,race)
+        #!                 for race,choice in totdict.keys()])
+        #!balraces = set(votes.keys())
+
+        sovc = Sovc(sovcfilename)
+        sovc_races = sovc.get_races()  # native file titles
+        sovc_choices = sovc.get_choices()  # native file titles
+        sovc_counts = sovc.get_totals() # dict[(race,choice)] => count
+        
+        lvr_races,lvr_choices = self.get_titles() # native file titles
+        lvr_counts = self.votes # dict[(race,'ALL')][choice] => count
+
+        rLUT = ut.read_lut(race_map) # dict[sovc_title] => lvr_title
+        cLUT = ut.read_lut(choice_map) # dict[sovc_title] => lvr_title
+        sal_races = set([rLUT[r] for r in sovc_races]) # SOVC as LVR title
+
+        # Report on races not in both SOVC and Ballot
+        for race in sal_races - lvr_races:
+            print('ERROR: Ballot votes do not contain race "{}".'.format(race))
+        for race in lvr_races - sal_races:
+            print('ERROR: SOVC votes do not contain race "{}".'.format(race))
+
+        # Report on count differences for races in both SOVC and Ballot
+        for race in sovc_races:
+            if rLUT[race] not in lvr_races:
+                continue
+            sovc_choices = sovc.get_race_choices(race)
+            sal_choices = set([cLUT[c] for c in sovc_choices]) # SOVC as LVR str
+            lvr_choices = set(choices[race])
+
+            for choice in sal_choices - lvr_choices:
+                print(('ERROR: Ballot (LVR) choices for race "{}" do '
+                       'not contain choice "{}".')
+                      .format(rLUT[race], cLUT[choice]))
+            for choice in lvr_choices - sal_choices :
+                print(('ERROR: SOVC choices for race "{}" do '
+                      'not contain choice "{}".')
+                      .format(race, choice))
+            for choice in sovc_choices:
+                sovc_count = sovc_counts[(race,choice)]
+                lvr_count = votes[rLUT[race]][cLUT[choice]]
+                if  lvr_count != sovc_count:
+                    print(('ERROR: vote counts do not agree for {}. '
+                          'sovc={}, calc={}')
+                          .format((race, choice), sovc_count, lvr_count))
 
         
     def get_titles(self,

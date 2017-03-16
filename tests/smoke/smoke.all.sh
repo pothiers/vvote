@@ -37,12 +37,7 @@ sovcout="$HOME/.vvote_output/2016GenSampleSet-400.sovc.csv"
 testCommand vv2_1 "countvote -f SOVC -t $tmpexcel $LVR" "^\#"
 xls2csv --transpose $tmpexcel $sovcout
 testOutput vv2_1_out $sovcout
-
-
-#!txtout="$HOME/.vvout_output/2016GenSampleSet-sovc.txt"
-#!testCommand vv3_1 "countvote $data/2016GenSampleSet.xlsx $txtout"
-#!testOutput vv3_1_out $txtcout
-
+ 
 ###########################################
 #echo "WARNING: ignoring remainder of tests"
 #exit $return_code
