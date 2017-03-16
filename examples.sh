@@ -28,4 +28,7 @@ countvote --format SOVC $data/2016GenSampleSet-400.lvr.xlsx 2016GenSampleSet-400
 
 # UNDER-CONSTRUCTION!!!
 # see vvote/sovc.py
+countvote -v --sovc  $data2/G2016_EXPORT1.xlsx "$data2/Day 1 CVR no Images.xlsx" day1.txt
+
 comparesovc --racemap rm.csv --choicemap cm.csv 2016GenSampleSet-400.sovc.xlsx $data/2016GenSampleSet-400.sovc.xlsx
+

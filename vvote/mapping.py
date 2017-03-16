@@ -24,10 +24,10 @@ from .lvr import Lvr
 
 def similar(x,y):
     "Symetric similarity.  Higher number is more similar."
+    if x == y:
+        return 999
     a = x.replace(' ','')
     b = y.replace(' ','')
-    if a == b:
-        return 999
     #!return SequenceMatcher(a=a, b=b).ratio()+SequenceMatcher(a=b, b=a).ratio()
     return max(SequenceMatcher(a=a, b=b).ratio(),
                SequenceMatcher(a=b, b=a).ratio())

@@ -86,7 +86,9 @@ that represents official results.
         return totdict
 
     def compare(self, votes, choices, n_votes,
-                race_map=None, choice_map=None):
+                race_map=None, choice_map=None,
+                verbose=False):
+        """Compare SOVC to talley of votes in LVR file."""
         print('Comparing calculated vote counts to those from {}'
               .format(self.filename))
         sovc2ballot = dict()

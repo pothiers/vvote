@@ -30,7 +30,7 @@ mkdir -p ~/.vvote_output 2> /dev/null
 tmpexcel="$HOME/.vvote_output/tmp.xlsx"
 
 sovcout="$HOME/.vvote_output/2016GenSampleSet-400.sovc.csv"
-testCommand vv2_1 "countvote -f SOVC $data/2016GenSampleSet-400.lvr.xlsx $tmpexcel" "^\#"
+testCommand vv2_1 "countvote -f SOVC -t $tmpexcel $data/2016GenSampleSet-400.lvr.xlsx " "^\#"
 xls2csv --transpose $tmpexcel $sovcout
 testOutput vv2_1_out $sovcout
 
