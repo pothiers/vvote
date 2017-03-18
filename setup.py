@@ -89,6 +89,7 @@ setup(
         'console_scripts': [
             'countvote=vvote.vvote:main',
             'sovc=vvote.sovc:main',
+            'lvr=vvote.lvr:main',
             'transpose=vvote.transpose:main',
             'genmap=vvote.mapping:main',
             'xls2csv=vvote.xlsx2csv:main',

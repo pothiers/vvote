@@ -5,15 +5,13 @@
 import sys
 import argparse
 import logging
-import os
-import os.path
 
 from collections import defaultdict
 from pprint import pprint
-import sqlite3
 
 from openpyxl import load_workbook
 from . import exceptions as ex
+from .db_ballot import BallotDb
 
 
 class Sovc():
@@ -146,35 +144,8 @@ that represents official results.
 
     def save(self, dbfile='SOVC.db'):
         """Save contents in sqlite database"""
-        schema = '''
-CREATE TABLE race (
-   race_id integer primary key,
-   title text,
-   num_to_vote_for integer
-);
-CREATE TABLE choice (
-   choice_id integer primary key,
-   title text,
-   race_id integer
-);
-CREATE TABLE precinct (
-  race_id integer,
-  choice_id integer,
-  county_number,
-  precinct_code,
-  precinct_name,
-  registered_voters integer,
-  ballots_cast_total integer,
-  ballots_cast_blank integer,
-  votes integer
-);
-'''
-        if os.path.exists(dbfile):
-            os.remove(dbfile)
-        conn = sqlite3.connect(dbfile)
-        cur = conn.cursor()
-        cur.executescript(schema)
-
+        sovcdb = BallotDb(dbfile, self.filename)
+        
         print('DBG: save RACE and CHOICE tables')
         cid = 0
         choiceLut = dict() # lut[title] = id
@@ -189,34 +160,35 @@ CREATE TABLE precinct (
             for c2 in range(c, self.max_column+1):
                 if racetitle == self.ws.cell(row=1, column=c2).value.strip():
                     choicetitle = self.ws.cell(row=3, column=c2).value.strip()
-                    choice_list.append((cid, choicetitle, rid))
+                    choice_list.append((cid, choicetitle, rid, None))
                     choiceLut[choicetitle] = cid
                     cid += 1
                 else:
                     break
-        cur.executemany('INSERT INTO race VALUES (?,?,?)', race_list)
-        cur.executemany('INSERT INTO choice VALUES (?,?,?)', choice_list)
+        sovcdb.insert_race_list(race_list)
+        sovcdb.insert_choice_list(choice_list)
 
         print('DBG: save PRECINCT table')
         precinct_list = list()
+        vote_list = list()
         # dict[(race,choice] => (count,precinct,regvot,baltot,balblank)"
         pt = self.get_precinct_totals()
         for ((racetitle,choicetitle),
              (count,precinct,regvot,baltot,balblank)) in pt.items():
+            choice_id = choiceLut.get(choicetitle, None)
             precinct_list.append((raceLut[racetitle],
-                                  choiceLut.get(choicetitle, None),
+                                  choice_id,
                                   None, # county_number
                                   precinct,
                                   precinct,
                                   regvot, # registered_voters integer,
                                   baltot, # ballots_cast_total integer,
-                                  balblank, # ballots_cast_blank integer,
-                                  count))
-        cur.executemany('INSERT INTO precinct VALUES (?,?,?,?,?,?,?,?,?)',
-                        precinct_list)        
-
-        conn.commit()
-        conn.close()
+                                  balblank # ballots_cast_blank integer
+                                  ))
+            vote_list.append((choice_id, precinct, count))
+        sovcdb.insert_precinct_list(precinct_list)        
+        sovcdb.insert_vote_list(vote_list)        
+        sovcdb.close()
         print('Saved SOVC to sqlite DB: {}'.format(dbfile))
 
 ##############################################################################
@@ -225,7 +197,7 @@ def main():
     "Parse command line arguments and do the work."
     #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
-        description='Extract from Statement Of Votes Cast',
+        description='Extract from Statement Of Votes Cast (SOVC) excel (.xslx)',
         epilog='EXAMPLE: %(prog)s sovc.xslx'
         )
     parser.add_argument('--version', action='version', version='1.0.1')

@@ -4,9 +4,9 @@
 
 import copy
 import sys
-import sqlite3
-import os
-import os.path
+import argparse
+import logging
+
 from collections import defaultdict
 from openpyxl import load_workbook
 from openpyxl import Workbook
@@ -16,6 +16,7 @@ from pprint import pprint
 from . import excel_utils as eu
 from . import utils as ut
 from .sovc import Sovc
+from .db_ballot import BallotDb
 
 class Lvr():
     """Maintain List of Vote Records (LVR). Its an excel (.xslx) file
@@ -404,34 +405,7 @@ that represents contents from a set of ballots.
 
     def save(self, dbfile='LVR.db'):
         """Save summarized contents in sqlite database"""
-        schema = '''
-CREATE TABLE race (
-   race_id integer primary key,
-   title text,
-   num_to_vote_for integer
-);
-CREATE TABLE choice (
-   choice_id integer primary key,
-   title text,
-   race_id integer
-);
-CREATE TABLE precinct (
-  race_id integer,
-  choice_id integer,
-  county_number,
-  precinct_code,
-  precinct_name,
-  registered_voters integer,
-  ballots_cast_total integer,
-  ballots_cast_blank integer,
-  votes integer
-);
-'''
-        if os.path.exists(dbfile):
-            os.remove(dbfile)
-        conn = sqlite3.connect(dbfile)
-        cur = conn.cursor()
-        cur.executescript(schema)
+        lvrdb = BallotDb(dbfile, self.filename)
         self.count_votes()
 
         cid = 0
@@ -439,31 +413,82 @@ CREATE TABLE precinct (
         raceLut = dict() # lut[title] = id
         race_list = list()
         choice_list = list()
+        party = None  # doesn't matter for anything we do now
         for rid,racetitle in enumerate(self.orderedraces):
             race_list.append((rid, racetitle, self.n_votes[racetitle]))
             raceLut[racetitle] = rid
             for choicetitle in self.choices[racetitle]:
-                choice_list.append((cid, choicetitle, rid))
+                choice_list.append((cid, choicetitle, rid, party))
                 choiceLut[choicetitle] = cid
                 cid += 1
-        cur.executemany('INSERT INTO race VALUES (?,?,?)', race_list)
-        cur.executemany('INSERT INTO choice VALUES (?,?,?)', choice_list)
+        lvrdb.insert_race_list(race_list)
+        lvrdb.insert_choice_list(choice_list)
         precinct_list = list()
+        vote_list = list()
         for (racetitle, precinct),choicedict in self.votes.items():
             for choicetitle,count in choicedict.items():
+                choice_id = choiceLut.get(choicetitle, None)
                 precinct_list.append((raceLut[racetitle],
-                                      choiceLut.get(choicetitle, None),
+                                      choice_id, 
                                       None, # county_number
                                       precinct,
                                       precinct,
                                       0, # registered_voters integer,
                                       0, # ballots_cast_total integer,
-                                      0, # ballots_cast_blank integer,
-                                      count))
-        cur.executemany('INSERT INTO precinct VALUES (?,?,?,?,?,?,?,?,?)',
-                        precinct_list)        
-        conn.commit()
-        conn.close()
+                                      0 # ballots_cast_blank integer,
+                                      ))
+                vote_list.append((choice_id, precinct, count))
+        lvrdb.insert_precinct_list(precinct_list)        
+        lvrdb.insert_vote_list(vote_list)        
+        lvrdb.close()
         print('Saved LVR to sqlite DB: {}'.format(dbfile))
               
     
+##############################################################################
+
+def main():
+    "Parse command line arguments and do the work."
+    parser = argparse.ArgumentParser(
+        description='Extract from List of cast Vote Records (LVR)excel (.xslx)',
+        epilog='EXAMPLE: %(prog)s lvr.xslx'
+        )
+    parser.add_argument('--version', action='version', version='1.0.1')
+    parser.add_argument('infile', type=argparse.FileType('r'),
+                        help='Input file')
+    #!parser.add_argument('outfile', type=argparse.FileType('w'),
+    #!                    help='Vote count output')
+
+    parser.add_argument('--csv',
+                        action='store_true',
+                        help='Write Excel to CSV file')
+
+    parser.add_argument('--loglevel',
+                        help='Kind of diagnostic output',
+                        choices=['CRTICAL', 'ERROR', 'WARNING',
+                                 'INFO', 'DEBUG'],
+                        default='WARNING')
+    args = parser.parse_args()
+    args.infile.close()
+    args.infile = args.infile.name
+    #args.outfile.close()
+    #args.outfile = args.outfile.name
+
+    log_level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(log_level, int):
+        parser.error('Invalid log level: %s' % args.loglevel)
+    logging.basicConfig(level=log_level,
+                        format='%(levelname)s %(message)s',
+                        datefmt='%m-%d %H:%M')
+    logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
+
+    #!print('Reading counts from file: "{}"'.format(args.infile))
+    lvr = Lvr(args.infile)
+    print('Saving to DB')
+    lvr.save()
+    #!print('Getting totals')
+    #!totdict = sovc.get_totals()
+    #!print('Totals = ',)
+    #!pprint(totdict)
+
+if __name__ == '__main__':
+    main()
