@@ -95,13 +95,12 @@ that represents official results.
         choices = [self.ws.cell(row=3, column=c).value.strip()
                    for c in range(4, self.max_column+1)]
         totdict = dict()
-        print('DBG-4')
         #!for r in range(4, self.totalsrow):
         #!for r,row in enumerate(self.ws.rows, start=1):
         #!for r,row in enumerate(self.ws.rows[4:], start=4):
         for row in list(self.ws.rows)[4:]:
             (county,pcode,precinct,numreg,btotal,bblank,*tally) = row
-            print('DBG-4.1; pcode={}'.format(pcode.value))
+            print('Save data for precinct_code={}'.format(pcode.value))
             #county_number = self.ws.cell(row=r, column=1).value
             #precinct_code = self.ws.cell(row=r, column=2).value
             #!precinct      = self.ws.cell(row=r, column=3).value
