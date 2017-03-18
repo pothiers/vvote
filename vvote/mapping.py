@@ -12,6 +12,7 @@ import logging
 import warnings
 from collections import defaultdict
 from pprint import pprint
+from os.path import basename
 
 import itertools
 from openpyxl import load_workbook
@@ -146,7 +147,8 @@ def main():
             #!print('{}\t{}\t{}'.format(sovc, lvr, score), file=args.racemap)
             print('{}\t{}'.format(sovc, lvr), file=args.racemap)
     print('Generated {}/{} records to map RACE strings from {} to {}'
-          .format(numout, len(race_table), args.sovcfile, args.lvrfile))
+          .format(numout, len(race_table),
+                  basename(args.sovcfile), basename(args.lvrfile)))
 
     #!print('{}\t{}\t{}'.format('SOVC','LVR', 'Score'), file=args.choicemap)
     print('{}\t{}'.format('SOVC','LVR'), file=args.choicemap)

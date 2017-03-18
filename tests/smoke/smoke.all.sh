@@ -32,20 +32,23 @@ LVR="$data/2016GenSampleSet-400.lvr.xlsx"
 # simple vote count output (with precincts) to stdout
 testCommand vv1_1 "countvote $LVR" "^\#" n
 
+# Created an unofficial SOVC file.
 genSOVC="$HOME/.vvote_output/2016GenSampleSet-400.sovc.xlsx"
 sovcout="$HOME/.vvote_output/2016GenSampleSet-400.sovc.csv"
-testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#"
+testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#" n
 xls2csv --transpose $genSOVC $sovcout
 testOutput vv2_1_out $sovcout
 #testOutput vv2_2_out $genSOVC
 
+# Create tables to map SOVC titles to LVR titles
 racemap="$HOME/.vvote_output/2016GenSampleSet-racemap.csv"
 choicemap="$HOME/.vvote_output/2016GenSampleSet-choicemap.csv"
-testCommand vv3_1 "genmap $genSOVC $LVR $racemap $choicemap" "^\#"
+testCommand vv3_1 "genmap $genSOVC $LVR $racemap $choicemap" "^\#" n
 testOutput vv3_2_out $racemap
 testOutput vv3_3_out $choicemap
 
-
+# COMPARE counted results with official SOVC results.
+testCommand vv3_1 "countvote -v --sovc $genSOVC -t counts.txt -c $choicemap -r $racemap $LVR"
 
 ###########################################
 #echo "WARNING: ignoring remainder of tests"

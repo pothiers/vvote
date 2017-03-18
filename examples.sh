@@ -2,6 +2,7 @@
 
 data="$HOME/sandbox/vvote/tests/data"
 data2="/data/vvote"
+out="$HOME/.vvote_output"
 
 # Activate env and install latest
 source ~/sandbox/vvote/venv/bin/activate

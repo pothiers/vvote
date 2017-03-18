@@ -5,8 +5,12 @@
 import sys
 import argparse
 import logging
+import os
+import os.path
+
 from collections import defaultdict
 from pprint import pprint
+import sqlite3
 
 from openpyxl import load_workbook
 from . import exceptions as ex
@@ -22,7 +26,7 @@ that represents official results.
    Row 4 to N-1:: Precinct totals
    Row N:: Grand totals (County totals)
    Row N+1:: "_x001A_"  ??? End of data?
-  
+
    Col 1:: County Number ('_x001A_' in last row)
    Col 2:: Precinct Code (number)
    Col 3:: Precinct Name (number) or "COUNTY TOTALS"
@@ -33,6 +37,7 @@ that represents official results.
 """
     MARKER='_x001A_'
     MARKER2='REGISTERED VOTERS - TOTAL'
+
     
     def __init__(self, sovc_file,
                  nrows = 10000, # progress every N rows iff verbose==True
@@ -85,6 +90,39 @@ that represents official results.
         totdict = dict(zip(racechoice, totals))
         return totdict
 
+    def get_precinct_totals(self):
+        "RETURN: dict[(race,choice)] => (count,precinct,regvot,baltot,balblank)"
+        races = [self.ws.cell(row=1, column=c).value.strip()
+                 for c in range(4, self.max_column+1)]
+        choices = [self.ws.cell(row=3, column=c).value.strip()
+                   for c in range(4, self.max_column+1)]
+        totdict = dict()
+        print('DBG-4')
+        #!for r in range(4, self.totalsrow):
+        #!for r,row in enumerate(self.ws.rows, start=1):
+        #!for r,row in enumerate(self.ws.rows[4:], start=4):
+        for row in list(self.ws.rows)[4:]:
+            (county,pcode,precinct,numreg,btotal,bblank,*tally) = row
+            print('DBG-4.1; pcode={}'.format(pcode.value))
+            #county_number = self.ws.cell(row=r, column=1).value
+            #precinct_code = self.ws.cell(row=r, column=2).value
+            #!precinct      = self.ws.cell(row=r, column=3).value
+            #!numreg        = self.ws.cell(row=r, column=4).value
+            #!ballots_total = self.ws.cell(row=r, column=5).value
+            #!ballots_blank = self.ws.cell(row=r, column=6).value
+
+            #for c in range(7, self.max_column+1):
+            #for c,cell in enumerate(row, start=1):
+            for cell in tally:
+                if cell.value == None: continue
+                race = self.ws.cell(row=1, column=cell.column).value
+                choice = self.ws.cell(row=3, column=cell.column).value
+                totdict[(race.strip(), choice.strip())] = (
+                    cell.value,
+                    precinct.value, numreg.value, btotal.value, bblank.value)
+        print('DBG-5')
+        return totdict
+
     def get_races(self):
         return set([self.ws.cell(row=1, column=c).value.strip()
                    for c in range(7, self.max_column+1)])
@@ -99,11 +137,88 @@ that represents official results.
 
     def get_race_choices(self, race):
         choices = set()
-        for (r,c) in self.get_totals().keys():
-            if r == race:
-                choices.add(c)
+        for c in range(4, self.max_column+1):
+            racetitle = self.ws.cell(row=1, column=c).value.strip()
+            if race == racetitle:
+                choices.add(self.ws.cell(row=3, column=c).value.strip())
         return choices
-    
+
+
+    def save(self, dbfile='SOVC.db'):
+        """Save contents in sqlite database"""
+        schema = '''
+CREATE TABLE race (
+   race_id integer primary key,
+   title text,
+   num_to_vote_for integer
+);
+CREATE TABLE choice (
+   choice_id integer primary key,
+   title text,
+   race_id integer
+);
+CREATE TABLE precinct (
+  race_id integer,
+  choice_id integer,
+  county_number,
+  precinct_code,
+  precinct_name,
+  registered_voters integer,
+  ballots_cast_total integer,
+  ballots_cast_blank integer,
+  votes integer
+);
+'''
+        if os.path.exists(dbfile):
+            os.remove(dbfile)
+        conn = sqlite3.connect(dbfile)
+        cur = conn.cursor()
+        cur.executescript(schema)
+
+        print('DBG: save RACE and CHOICE tables')
+        cid = 0
+        choiceLut = dict() # lut[title] = id
+        raceLut = dict() # lut[title] = id
+        race_list = list()
+        choice_list = list()
+        for c in range(4, self.max_column+1):
+            racetitle = self.ws.cell(row=1, column=c).value.strip()
+            rid = c
+            race_list.append((rid, racetitle, None))
+            raceLut[racetitle] = rid
+            for c2 in range(c, self.max_column+1):
+                if racetitle == self.ws.cell(row=1, column=c2).value.strip():
+                    choicetitle = self.ws.cell(row=3, column=c2).value.strip()
+                    choice_list.append((cid, choicetitle, rid))
+                    choiceLut[choicetitle] = cid
+                    cid += 1
+                else:
+                    break
+        cur.executemany('INSERT INTO race VALUES (?,?,?)', race_list)
+        cur.executemany('INSERT INTO choice VALUES (?,?,?)', choice_list)
+
+        print('DBG: save PRECINCT table')
+        precinct_list = list()
+        # dict[(race,choice] => (count,precinct,regvot,baltot,balblank)"
+        pt = self.get_precinct_totals()
+        for ((racetitle,choicetitle),
+             (count,precinct,regvot,baltot,balblank)) in pt.items():
+            precinct_list.append((raceLut[racetitle],
+                                  choiceLut.get(choicetitle, None),
+                                  None, # county_number
+                                  precinct,
+                                  precinct,
+                                  regvot, # registered_voters integer,
+                                  baltot, # ballots_cast_total integer,
+                                  balblank, # ballots_cast_blank integer,
+                                  count))
+        cur.executemany('INSERT INTO precinct VALUES (?,?,?,?,?,?,?,?,?)',
+                        precinct_list)        
+
+        conn.commit()
+        conn.close()
+        print('Saved SOVC to sqlite DB: {}'.format(dbfile))
+
 ##############################################################################
 
 def main():
@@ -142,11 +257,14 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
-    print('Reading counts from file: "{}"'.format(args.infile))
+    #!print('Reading counts from file: "{}"'.format(args.infile))
     sovc = Sovc(args.infile)
-    totdict = sovc.get_totals()
-    print('Totals = ',)
-    pprint(totdict)
+    print('Saving to DB')
+    sovc.save()
+    #!print('Getting totals')
+    #!totdict = sovc.get_totals()
+    #!print('Totals = ',)
+    #!pprint(totdict)
 
 if __name__ == '__main__':
     main()

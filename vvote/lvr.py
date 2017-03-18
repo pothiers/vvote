@@ -4,9 +4,14 @@
 
 import copy
 import sys
+import sqlite3
+import os
+import os.path
 from collections import defaultdict
 from openpyxl import load_workbook
 from openpyxl import Workbook
+from pprint import pprint
+
 
 from . import excel_utils as eu
 from . import utils as ut
@@ -28,7 +33,7 @@ that represents contents from a set of ballots.
     votes = defaultdict(lambda : defaultdict(int)) 
     n_votes = defaultdict(int)  # n_votes[race] => num-to-vote-for
     choices = defaultdict(set) # choices[race] = set([choice1, choice2,...])
-    orderedchoices = dict() # d[race] => [choice1, ...]
+    #orderedchoices = defaultdict(list) # d[race] => [choice1, ...]
     orderedraces = list()
     precincts = set('ALL')
     nballots = 0
@@ -79,7 +84,7 @@ that represents contents from a set of ballots.
         n_votes = self.n_votes
         num_ballots = self.nballots
         orderedraces = self.orderedraces
-        orderedchoices = self.orderedchoices
+        #orderedchoices = self.orderedchoices
 
         coltitle = dict() # coltitle[column] => racetitle
         raceballot = list() # single ballot for single race, list(choice1, ...])
@@ -169,7 +174,7 @@ that represents contents from a set of ballots.
                             choices[race].add(choice)
                             votes[(race,precinct)][choice] += 1
                             votes[(race,'ALL')][choice] += 1
-                        orderedchoices[race] = copy.copy(raceballot)
+                            #orderedchoices[race].append(choice)
                         raceballot = list() # single ballot for single race
 
         self.votes = votes
@@ -177,7 +182,7 @@ that represents contents from a set of ballots.
         self.n_votes = n_votes
         self.nballots = ridx-1
         self.orderedraces = orderedraces
-        self.orderedchoices = orderedchoices
+        #self.orderedchoices = orderedchoices
         print('Processed {} ballots'.format(self.nballots))
 
 
@@ -226,7 +231,9 @@ that represents contents from a set of ballots.
         n_votes = self.n_votes
         num_ballots = self.nballots
         orderedraces = self.orderedraces
-        orderedchoices = self.orderedchoices
+        #orderedchoices = self.orderedchoices
+        #print('DBG: LVR orderedchoices=',)
+        #pprint(self.orderedchoices)
         
         # votes[race][choice] = count
         # choices[race] = set([choice1, choice2,...])
@@ -255,8 +262,8 @@ that represents contents from a set of ballots.
         ws['F3'] = 'BALLOTS CAST'
         # G3 ... :: Candidates
 
-        ws['B4'] = 'ZZZ'
-        ws['C4'] = 'COUNTY TOTALS'
+        #! ws['B4'] = 'ZZZ'
+        #! ws['C4'] = 'COUNTY TOTALS'
 
         col = 7
         ignore_choices = set([na_tag])
@@ -272,8 +279,10 @@ that represents contents from a set of ballots.
             votes[race]['undervotes'] = undervotes
             choices[race].add('undervotes')
 
+            #!print('DBG: orderedchoices[race]({}):: dict[{}]={}'
+            #!     .format(len(orderedchoices[race]),race,orderedchoices[race]))
             #for choice in set(choices[race]-ignore_choices):
-            for choice in orderedchoices[race]:
+            for choice in choices[race]:
                 if choice in ignore_choices:
                     continue
                 ws.cell(column=col, row=1).value = race
@@ -315,13 +324,6 @@ that represents contents from a set of ballots.
         votes = self.votes
         choices = self.choices
         n_votes = self.n_votes
-
-        #!sovc2ballot = dict()
-        #!ballot2sovc = dict()
-        #!totdict = self.get_totals()
-        #!sovcraces = set([sovc2ballot.get(race,race)
-        #!                 for race,choice in totdict.keys()])
-        #!balraces = set(votes.keys())
 
         sovc = Sovc(sovcfilename)
         sovc_races = sovc.get_races()  # native file titles
@@ -399,3 +401,69 @@ that represents contents from a set of ballots.
                         continue
                     choices.add(cell.value.strip())
         return races, (choices - set(other))
+
+    def save(self, dbfile='LVR.db'):
+        """Save summarized contents in sqlite database"""
+        schema = '''
+CREATE TABLE race (
+   race_id integer primary key,
+   title text,
+   num_to_vote_for integer
+);
+CREATE TABLE choice (
+   choice_id integer primary key,
+   title text,
+   race_id integer
+);
+CREATE TABLE precinct (
+  race_id integer,
+  choice_id integer,
+  county_number,
+  precinct_code,
+  precinct_name,
+  registered_voters integer,
+  ballots_cast_total integer,
+  ballots_cast_blank integer,
+  votes integer
+);
+'''
+        if os.path.exists(dbfile):
+            os.remove(dbfile)
+        conn = sqlite3.connect(dbfile)
+        cur = conn.cursor()
+        cur.executescript(schema)
+        self.count_votes()
+
+        cid = 0
+        choiceLut = dict() # lut[title] = id
+        raceLut = dict() # lut[title] = id
+        race_list = list()
+        choice_list = list()
+        for rid,racetitle in enumerate(self.orderedraces):
+            race_list.append((rid, racetitle, self.n_votes[racetitle]))
+            raceLut[racetitle] = rid
+            for choicetitle in self.choices[racetitle]:
+                choice_list.append((cid, choicetitle, rid))
+                choiceLut[choicetitle] = cid
+                cid += 1
+        cur.executemany('INSERT INTO race VALUES (?,?,?)', race_list)
+        cur.executemany('INSERT INTO choice VALUES (?,?,?)', choice_list)
+        precinct_list = list()
+        for (racetitle, precinct),choicedict in self.votes.items():
+            for choicetitle,count in choicedict.items():
+                precinct_list.append((raceLut[racetitle],
+                                      choiceLut.get(choicetitle, None),
+                                      None, # county_number
+                                      precinct,
+                                      precinct,
+                                      0, # registered_voters integer,
+                                      0, # ballots_cast_total integer,
+                                      0, # ballots_cast_blank integer,
+                                      count))
+        cur.executemany('INSERT INTO precinct VALUES (?,?,?,?,?,?,?,?,?)',
+                        precinct_list)        
+        conn.commit()
+        conn.close()
+        print('Saved LVR to sqlite DB: {}'.format(dbfile))
+              
+    
