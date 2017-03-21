@@ -101,15 +101,6 @@ that represents official results.
         for row in list(self.ws.rows)[4:]:
             (county,pcode,precinct,numreg,btotal,bblank,*tally) = row
             print('Save data for precinct_code={}'.format(pcode.value))
-            #county_number = self.ws.cell(row=r, column=1).value
-            #precinct_code = self.ws.cell(row=r, column=2).value
-            #!precinct      = self.ws.cell(row=r, column=3).value
-            #!numreg        = self.ws.cell(row=r, column=4).value
-            #!ballots_total = self.ws.cell(row=r, column=5).value
-            #!ballots_blank = self.ws.cell(row=r, column=6).value
-
-            #for c in range(7, self.max_column+1):
-            #for c,cell in enumerate(row, start=1):
             for cell in tally:
                 if cell.value == None: continue
                 race = self.ws.cell(row=1, column=cell.column).value

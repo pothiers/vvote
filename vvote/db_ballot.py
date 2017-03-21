@@ -30,7 +30,7 @@ CREATE TABLE precinct (
   ballots_cast_blank integer
 );
 CREATE TABLE vote (
-  choice_id ingeger,
+  choice_id integer,
   precinct_code,
   count integer
 );
