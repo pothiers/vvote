@@ -4,13 +4,19 @@
 
 import copy
 import sys
+import argparse
+import logging
+
 from collections import defaultdict
 from openpyxl import load_workbook
 from openpyxl import Workbook
+from pprint import pprint
+
 
 from . import excel_utils as eu
 from . import utils as ut
 from .sovc import Sovc
+from .db_ballot import BallotDb
 
 class Lvr():
     """Maintain List of Vote Records (LVR). Its an excel (.xslx) file
@@ -28,7 +34,7 @@ that represents contents from a set of ballots.
     votes = defaultdict(lambda : defaultdict(int)) 
     n_votes = defaultdict(int)  # n_votes[race] => num-to-vote-for
     choices = defaultdict(set) # choices[race] = set([choice1, choice2,...])
-    orderedchoices = dict() # d[race] => [choice1, ...]
+    #orderedchoices = defaultdict(list) # d[race] => [choice1, ...]
     orderedraces = list()
     precincts = set('ALL')
     nballots = 0
@@ -79,7 +85,7 @@ that represents contents from a set of ballots.
         n_votes = self.n_votes
         num_ballots = self.nballots
         orderedraces = self.orderedraces
-        orderedchoices = self.orderedchoices
+        #orderedchoices = self.orderedchoices
 
         coltitle = dict() # coltitle[column] => racetitle
         raceballot = list() # single ballot for single race, list(choice1, ...])
@@ -169,7 +175,7 @@ that represents contents from a set of ballots.
                             choices[race].add(choice)
                             votes[(race,precinct)][choice] += 1
                             votes[(race,'ALL')][choice] += 1
-                        orderedchoices[race] = copy.copy(raceballot)
+                            #orderedchoices[race].append(choice)
                         raceballot = list() # single ballot for single race
 
         self.votes = votes
@@ -177,7 +183,7 @@ that represents contents from a set of ballots.
         self.n_votes = n_votes
         self.nballots = ridx-1
         self.orderedraces = orderedraces
-        self.orderedchoices = orderedchoices
+        #self.orderedchoices = orderedchoices
         print('Processed {} ballots'.format(self.nballots))
 
 
@@ -226,7 +232,9 @@ that represents contents from a set of ballots.
         n_votes = self.n_votes
         num_ballots = self.nballots
         orderedraces = self.orderedraces
-        orderedchoices = self.orderedchoices
+        #orderedchoices = self.orderedchoices
+        #print('DBG: LVR orderedchoices=',)
+        #pprint(self.orderedchoices)
         
         # votes[race][choice] = count
         # choices[race] = set([choice1, choice2,...])
@@ -255,8 +263,8 @@ that represents contents from a set of ballots.
         ws['F3'] = 'BALLOTS CAST'
         # G3 ... :: Candidates
 
-        ws['B4'] = 'ZZZ'
-        ws['C4'] = 'COUNTY TOTALS'
+        #! ws['B4'] = 'ZZZ'
+        #! ws['C4'] = 'COUNTY TOTALS'
 
         col = 7
         ignore_choices = set([na_tag])
@@ -272,8 +280,10 @@ that represents contents from a set of ballots.
             votes[race]['undervotes'] = undervotes
             choices[race].add('undervotes')
 
+            #!print('DBG: orderedchoices[race]({}):: dict[{}]={}'
+            #!     .format(len(orderedchoices[race]),race,orderedchoices[race]))
             #for choice in set(choices[race]-ignore_choices):
-            for choice in orderedchoices[race]:
+            for choice in choices[race]:
                 if choice in ignore_choices:
                     continue
                 ws.cell(column=col, row=1).value = race
@@ -299,8 +309,8 @@ that represents contents from a set of ballots.
                 if choice == 'overvote':
                     count *= nvotes
                 ws.cell(column=col, row=r).value = count
-                ws.cell(column=2, row=r).value = prec
-                ws.cell(column=3, row=r).value = prec
+                ws.cell(column=2, row=r).value =  'ZZZ'
+                ws.cell(column=3, row=r).value = 'COUNTY TOTALS'
                 ws.cell(column=1, row=r+1).value = '_x001A_'
                 col += 1
         wb.save(sovcfilename)
@@ -315,13 +325,6 @@ that represents contents from a set of ballots.
         votes = self.votes
         choices = self.choices
         n_votes = self.n_votes
-
-        #!sovc2ballot = dict()
-        #!ballot2sovc = dict()
-        #!totdict = self.get_totals()
-        #!sovcraces = set([sovc2ballot.get(race,race)
-        #!                 for race,choice in totdict.keys()])
-        #!balraces = set(votes.keys())
 
         sovc = Sovc(sovcfilename)
         sovc_races = sovc.get_races()  # native file titles
@@ -399,3 +402,93 @@ that represents contents from a set of ballots.
                         continue
                     choices.add(cell.value.strip())
         return races, (choices - set(other))
+
+    def save(self, dbfile='LVR.db'):
+        """Save summarized contents in sqlite database"""
+        lvrdb = BallotDb(dbfile, self.filename)
+        self.count_votes()
+
+        cid = 0
+        choiceLut = dict() # lut[title] = id
+        raceLut = dict() # lut[title] = id
+        race_list = list()
+        choice_list = list()
+        party = None  # doesn't matter for anything we do now
+        for rid,racetitle in enumerate(self.orderedraces):
+            race_list.append((rid, racetitle, self.n_votes[racetitle]))
+            raceLut[racetitle] = rid
+            for choicetitle in self.choices[racetitle]:
+                choice_list.append((cid, choicetitle, rid, party))
+                choiceLut[choicetitle] = cid
+                cid += 1
+        lvrdb.insert_race_list(race_list)
+        lvrdb.insert_choice_list(choice_list)
+        precinct_list = list()
+        vote_list = list()
+        for (racetitle, precinct),choicedict in self.votes.items():
+            for choicetitle,count in choicedict.items():
+                choice_id = choiceLut.get(choicetitle, None)
+                precinct_list.append((raceLut[racetitle],
+                                      choice_id, 
+                                      None, # county_number
+                                      precinct,
+                                      precinct,
+                                      0, # registered_voters integer,
+                                      0, # ballots_cast_total integer,
+                                      0 # ballots_cast_blank integer,
+                                      ))
+                vote_list.append((choice_id, precinct, count))
+        lvrdb.insert_precinct_list(precinct_list)        
+        lvrdb.insert_vote_list(vote_list)        
+        lvrdb.close()
+        print('Saved LVR to sqlite DB: {}'.format(dbfile))
+              
+    
+##############################################################################
+
+def main():
+    "Parse command line arguments and do the work."
+    parser = argparse.ArgumentParser(
+        description='Extract from List of cast Vote Records (LVR)excel (.xslx)',
+        epilog='EXAMPLE: %(prog)s lvr.xslx'
+        )
+    parser.add_argument('--version', action='version', version='1.0.1')
+    parser.add_argument('infile', type=argparse.FileType('r'),
+                        help='Input file')
+    #!parser.add_argument('outfile', type=argparse.FileType('w'),
+    #!                    help='Vote count output')
+
+    parser.add_argument('--csv',
+                        action='store_true',
+                        help='Write Excel to CSV file')
+
+    parser.add_argument('--loglevel',
+                        help='Kind of diagnostic output',
+                        choices=['CRTICAL', 'ERROR', 'WARNING',
+                                 'INFO', 'DEBUG'],
+                        default='WARNING')
+    args = parser.parse_args()
+    args.infile.close()
+    args.infile = args.infile.name
+    #args.outfile.close()
+    #args.outfile = args.outfile.name
+
+    log_level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(log_level, int):
+        parser.error('Invalid log level: %s' % args.loglevel)
+    logging.basicConfig(level=log_level,
+                        format='%(levelname)s %(message)s',
+                        datefmt='%m-%d %H:%M')
+    logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
+
+    #!print('Reading counts from file: "{}"'.format(args.infile))
+    lvr = Lvr(args.infile)
+    print('Saving to DB')
+    lvr.save()
+    #!print('Getting totals')
+    #!totdict = sovc.get_totals()
+    #!print('Totals = ',)
+    #!pprint(totdict)
+
+if __name__ == '__main__':
+    main()

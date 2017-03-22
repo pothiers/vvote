@@ -5,7 +5,7 @@
 import sys
 import argparse
 import logging
-import sqlite3
+
 
 from .sovc import Sovc
 from .lvr import Lvr
@@ -154,6 +154,7 @@ def main():
     print('# Counting votes from file: {}'.format(args.LVRfile))
     lvr = Lvr(args.LVRfile)
     lvr.count_votes(verbose=args.verbose)
+    lvr.save()
     # Vote counts now in: votes
     if args.format == 'text':
         lvr.emit_results(outputfile=args.talley)

@@ -4,7 +4,7 @@ def read_lut(racemap):
     lut = dict() # dict[sovc_title] => lvr_title
     
     with open(racemap) as csvfile:
-        reader = csv.DictReader(csvfile)
+        reader = csv.DictReader(csvfile, delimiter='\t')
         for row in reader:
             lut[row['SOVC']] = row['LVR']
     return lut
