@@ -9,6 +9,7 @@
 cmd=`basename $0`
 SCRIPT=$(readlink -e $0)     #Absolute path to this script
 dir=$(dirname $SCRIPT)       #Absolute path this script is in
+REPO=$(dirname $(dirname $dir))  #Absolute path to top of this repo
 data="$(dirname $dir)/data"  # ~/sandbox/vvote/tests/data/
 origdir=`pwd`
 cd $dir
@@ -25,37 +26,52 @@ echo ""
 echo ""
 #testCommand gm1_1 "genmap $data/day1-sovc.xlsx $data/day1-cvr.xlsx r.csv c.csv"
 
+OUT="$HOME/.vvote_output"
+
 # Stripped data. Just 400 ballots
-mkdir -p ~/.vvote_output 2> /dev/null
+mkdir -p $OUT 2> /dev/null
 LVR="$data/2016GenSampleSet-400.lvr.xlsx"
 
+PATH=$REPO/sql:$PATH
+
 ##############################################################################
+LVRDB="$OUT/lvr.db"
+testCommand vv0_1 "lvr -d $LVRDB $LVR" "^\#" n
+testCommand vv0_2 "dump_vvote_db.sh $LVRDB" "^\#" n
 
 # simple vote count output (with precincts) to stdout
-testCommand vv1_1 "countvote $LVR" "^\#" n
+#testCommand vv1_1 "countvote $LVR" "^\#" n
+testCommand vv1_2 "race-counts-by-precinct.sh $LVRDB" "^\#" n
 
-# Created an unofficial SOVC file.
-genSOVC="$HOME/.vvote_output/2016GenSampleSet-400.sovc.xlsx"
-sovcout="$HOME/.vvote_output/2016GenSampleSet-400.sovc.csv"
-testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#" n
-xls2csv --transpose $genSOVC $sovcout
-testOutput vv2_1_out $sovcout
-#testOutput vv2_2_out $genSOVC
+#!   ###########################################
+#!   echo "WARNING: ignoring remainder of tests"
+#!   exit $return_code
+#!   ###########################################
+#!   
+#!   # Created an unofficial SOVC file.
+#!   genSOVC="$OUT/2016GenSampleSet-400.sovc.xlsx"
+#!   SOVCDB="$OUT/sovc.db"
+#!   #!sovcout="$OUT/2016GenSampleSet-400.sovc.csv"
+#!   testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#" n
+#!   #!xls2csv --transpose $genSOVC $sovcout
+#!   testCommand vv2_2 "sovc -d $SOVCDB $genSOVC" "^\#" y
+#!   testCommand vv2_3 "dump_vvote_db.sh $SOVCDB" "^\#" n
+#!   
+#!   
+#!   testOutput vv2_1_out $sovcout
+#!   #testOutput vv2_2_out $genSOVC
+#!   
+#!   # Create tables to map SOVC titles to LVR titles
+#!   racemap="$OUT/2016GenSampleSet-racemap.csv"
+#!   choicemap="$OUT/2016GenSampleSet-choicemap.csv"
+#!   testCommand vv3_1 "genmap $genSOVC $LVR $racemap $choicemap" "^\#" n
+#!   testOutput vv3_2_out $racemap
+#!   testOutput vv3_3_out $choicemap
+#!   
+#!   # COMPARE counted results with official SOVC results.
+#!   testCommand vv3_1 "countvote -v --sovc $genSOVC -t counts.txt -c $choicemap -r $racemap $LVR"
 
-# Create tables to map SOVC titles to LVR titles
-racemap="$HOME/.vvote_output/2016GenSampleSet-racemap.csv"
-choicemap="$HOME/.vvote_output/2016GenSampleSet-choicemap.csv"
-testCommand vv3_1 "genmap $genSOVC $LVR $racemap $choicemap" "^\#" n
-testOutput vv3_2_out $racemap
-testOutput vv3_3_out $choicemap
-
-# COMPARE counted results with official SOVC results.
-testCommand vv3_1 "countvote -v --sovc $genSOVC -t counts.txt -c $choicemap -r $racemap $LVR"
-
-###########################################
-#echo "WARNING: ignoring remainder of tests"
-#exit $return_code
-###########################################
+>>>>>>> master
 
 #!# almost 40k ballots; mock1.xlsx
 #!results1="$sto/mock1-results.out"

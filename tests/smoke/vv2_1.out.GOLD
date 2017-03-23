@@ -1,3 +1,4 @@
-# Counting votes from file: /home/pothiers/sandbox/vvote/tests/data/2016GenSampleSet.xlsx
-# maxCol=102, maxRow=401
+# Counting votes from file: /home/pothiers/sandbox/vvote/tests/data/2016GenSampleSet-400.lvr.xlsx
 Processed 400 ballots
+Processed 400 ballots
+Saved LVR to sqlite DB: LVR.db

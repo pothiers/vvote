@@ -13,7 +13,7 @@ cd ~/sandbox/vvote
 ########################
 ## Sample invocations
 LVR="$data/2016GenSampleSet-400.lvr.xlsx"
-SOVC="$data1/data/vvote/G2016_EXPORT1.xlsx"
+SOVC="$data2/G2016_EXPORT1.xlsx"
 
 lvr $LVR
 sovc $SOVC

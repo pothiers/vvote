@@ -36,7 +36,8 @@ that represents contents from a set of ballots.
     choices = defaultdict(set) # choices[race] = set([choice1, choice2,...])
     #orderedchoices = defaultdict(list) # d[race] => [choice1, ...]
     orderedraces = list()
-    precincts = set('ALL')
+    #!precincts = set('ALL')
+    precincts = set()
     nballots = 0
 
     MARKER='Cast Vote Record'
@@ -145,22 +146,22 @@ that represents contents from a set of ballots.
                             undervote_m = ('undervote-{}'
                                            .format(raceballot.count(undervotetag)))
                             votes[(race,precinct)][undervote_m] += 1
-                            votes[(race,'ALL')][undervote_m] += 1
+                            #votes[(race,'ALL')][undervote_m] += 1
                             #!choices[race].add(undervote_m)
                             raceballot.append(undervote_m)
                         if overvotetag in raceballot:
                             assert raceballot.count(overvotetag) == n_votes[race]
                             votes[(race,precinct)][overvotetag] += 1
-                            votes[(race,'ALL')][overvotetag] += 1
+                            #votes[(race,'ALL')][overvotetag] += 1
                         if na_tag in raceballot:
                             assert raceballot.count(na_tag) == n_votes[race]
                             votes[(race,precinct)][na_tag] += 1
-                            votes[(race,'ALL')][na_tag] += 1
+                            #votes[(race,'ALL')][na_tag] += 1
                         for c in raceballot:
                             if c == writeintag:
                                 #!choices[race].add(c)
                                 votes[(race,precinct)][c] += 1          
-                                votes[(race,'ALL')][c] += 1          
+                                #votes[(race,'ALL')][c] += 1          
 
                         raceballot = [c for c in raceballot
                                       if ((c != undervotetag)
@@ -174,7 +175,7 @@ that represents contents from a set of ballots.
                         for choice in set(raceballot):
                             choices[race].add(choice)
                             votes[(race,precinct)][choice] += 1
-                            votes[(race,'ALL')][choice] += 1
+                            #votes[(race,'ALL')][choice] += 1
                             #orderedchoices[race].append(choice)
                         raceballot = list() # single ballot for single race
 
@@ -185,6 +186,7 @@ that represents contents from a set of ballots.
         self.orderedraces = orderedraces
         #self.orderedchoices = orderedchoices
         print('Processed {} ballots'.format(self.nballots))
+        # END count_votes()
 
 
     def emit_results(self, totals_only=False, outputfile = None):
@@ -199,9 +201,10 @@ that represents contents from a set of ballots.
             file=sys.stdout
         else:
             file = open(outputfile, mode='w')
-        plist = sorted(list((p for p in self.precincts if p != 'ALL')))
-        preclist = ['ALL'] if totals_only else (plist + ['ALL'])
-        for prec in preclist:
+        #!plist = sorted(list((p for p in self.precincts if p != 'ALL')))
+        #!preclist = ['ALL'] if totals_only else (plist + ['ALL'])
+        #!for prec in preclist:
+        for prec in sorted(self.precincts):
             for race in orderedraces:
                 rp = (race,prec) 
                 print(file=file)
@@ -293,7 +296,8 @@ that represents contents from a set of ballots.
                 #!    count *= nvotes
                 #!ws.cell(column=col, row=4).value = count
                 r=4
-                prec_list = sorted(self.precincts - {'ALL'})
+                #prec_list = sorted(self.precincts - {'ALL'})
+                prec_list = sorted(self.precincts)
                 for prec in prec_list:
                     rp = (race,prec) 
                     count = votes[rp][choice]
@@ -302,10 +306,13 @@ that represents contents from a set of ballots.
                     ws.cell(column=col, row=r).value = count
                     ws.cell(column=2, row=r).value = prec
                     ws.cell(column=3, row=r).value = prec
+                    votes[(race,'ALL')][choice] += count
                     r += 1
-                prec = 'ALL'
-                rp = (race,prec) 
-                count = votes[rp][choice]
+                #!prec = 'ALL'
+                #!rp = (race,prec)
+                achoices = votes.pop((race,'ALL'))
+                count = achoices[choice]
+
                 if choice == 'overvote':
                     count *= nvotes
                 ws.cell(column=col, row=r).value = count
@@ -332,7 +339,7 @@ that represents contents from a set of ballots.
         sovc_counts = sovc.get_totals() # dict[(race,choice)] => count
         
         lvr_races,lvr_choices = self.get_titles() # native file titles
-        lvr_counts = self.votes # dict[(race,'ALL')][choice] => count
+        lvr_counts = self.votes # dict[(race,precinct)][choice] => count
 
         rLUT = ut.read_lut(race_map) # dict[sovc_title] => lvr_title
         cLUT = ut.read_lut(choice_map) # dict[sovc_title] => lvr_title
@@ -414,10 +421,10 @@ that represents contents from a set of ballots.
         race_list = list()
         choice_list = list()
         party = None  # doesn't matter for anything we do now
-        for rid,racetitle in enumerate(self.orderedraces):
+        for rid,racetitle in enumerate(sorted(self.orderedraces)):
             race_list.append((rid, racetitle, self.n_votes[racetitle]))
             raceLut[racetitle] = rid
-            for choicetitle in self.choices[racetitle]:
+            for choicetitle in sorted(self.choices[racetitle]):
                 choice_list.append((cid, choicetitle, rid, party))
                 choiceLut[choicetitle] = cid
                 cid += 1
@@ -425,8 +432,13 @@ that represents contents from a set of ballots.
         lvrdb.insert_choice_list(choice_list)
         precinct_list = list()
         vote_list = list()
-        for (racetitle, precinct),choicedict in self.votes.items():
-            for choicetitle,count in choicedict.items():
+        # self.votes[(race,precinct)][choice] => count
+        #! for (racetitle, precinct),choicedict in self.votes.items():
+        for racetitle, precinct in sorted(self.votes.keys()):
+            choicedict = self.votes[(racetitle,precinct)]
+            #!for choicetitle,count in choicedict.items():
+            for choicetitle in sorted(choicedict.keys()):
+                count = choicedict[choicetitle]
                 choice_id = choiceLut.get(choicetitle, None)
                 precinct_list.append((raceLut[racetitle],
                                       choice_id, 
@@ -435,13 +447,13 @@ that represents contents from a set of ballots.
                                       precinct,
                                       0, # registered_voters integer,
                                       0, # ballots_cast_total integer,
-                                      0 # ballots_cast_blank integer,
+                                      0  # ballots_cast_blank integer,
                                       ))
                 vote_list.append((choice_id, precinct, count))
         lvrdb.insert_precinct_list(precinct_list)        
         lvrdb.insert_vote_list(vote_list)        
         lvrdb.close()
-        print('Saved LVR to sqlite DB: {}'.format(dbfile))
+        print('# Saved LVR to sqlite DB: {}'.format(dbfile))
               
     
 ##############################################################################
@@ -452,12 +464,14 @@ def main():
         description='Extract from List of cast Vote Records (LVR)excel (.xslx)',
         epilog='EXAMPLE: %(prog)s lvr.xslx'
         )
+    dfdb='LVR.db'
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('infile', type=argparse.FileType('r'),
                         help='Input file')
-    #!parser.add_argument('outfile', type=argparse.FileType('w'),
-    #!                    help='Vote count output')
-
+    parser.add_argument('-d', '--database', type=argparse.FileType('w'),
+                        default=dfdb,
+                        help=('SQlite database file to save LVR summary into.'
+                              '  [default="{}"]').format(dfdb))
     parser.add_argument('--csv',
                         action='store_true',
                         help='Write Excel to CSV file')
@@ -470,8 +484,8 @@ def main():
     args = parser.parse_args()
     args.infile.close()
     args.infile = args.infile.name
-    #args.outfile.close()
-    #args.outfile = args.outfile.name
+    args.database.close()
+    args.database = args.database.name
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -484,7 +498,7 @@ def main():
     #!print('Reading counts from file: "{}"'.format(args.infile))
     lvr = Lvr(args.infile)
     print('Saving to DB')
-    lvr.save()
+    lvr.save(dbfile=args.database)
     #!print('Getting totals')
     #!totdict = sovc.get_totals()
     #!print('Totals = ',)
