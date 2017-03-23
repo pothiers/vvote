@@ -98,15 +98,26 @@ that represents official results.
         #!for r in range(4, self.totalsrow):
         #!for r,row in enumerate(self.ws.rows, start=1):
         #!for r,row in enumerate(self.ws.rows[4:], start=4):
-        for row in list(self.ws.rows)[4:]:
+        tallyRows = list(self.ws.rows)[4:]
+        print('Number of tally rows={}'.format(len(tallyRows)))
+        #!for row in tallyRows:
+        for r,row in enumerate(self.ws.rows, start=1):
+            if r == 1:
+                races = [cell.value for cell in row]
+                print('DBG: races({}) = {}'.format(len(races), races))
+                continue
+            if r == 3:
+                choices = [cell.value for cell in row]
+                print('DBG: choices({}) = {}'.format(len(choices), choices))
+                continue
             (county,pcode,precinct,numreg,btotal,bblank,*tally) = row
-            print('Save data for precinct_code={}'.format(pcode.value))
-            for cell in tally:
+            #!for cell in tally: #columns
+            for c,cell in enumerate(row): #columns
                 if cell.value == None: continue
-                race = self.ws.cell(row=1, column=cell.column).value
-                choice = self.ws.cell(row=3, column=cell.column).value
-                totdict[(race.strip(), choice.strip())] = (
-                    cell.value,
+                race = races[c]
+                choice = choices[c]
+                if race == None or choice == None: continue
+                totdict[(race, choice)] = ( cell.value,
                     precinct.value, numreg.value, btotal.value, bblank.value)
         print('DBG-5')
         return totdict
@@ -190,11 +201,14 @@ def main():
         description='Extract from Statement Of Votes Cast (SOVC) excel (.xslx)',
         epilog='EXAMPLE: %(prog)s sovc.xslx'
         )
+    dfdb='SOVC.db'
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('infile', type=argparse.FileType('r'),
                         help='Input file')
-    #!parser.add_argument('outfile', type=argparse.FileType('w'),
-    #!                    help='Vote count output')
+    parser.add_argument('-d', '--database', type=argparse.FileType('w'),
+                        default=dfdb,
+                        help=('SQlite database file to save LVR summary into.'
+                              '  [default="{}"]').format(dfdb))
 
     parser.add_argument('--csv',
                         action='store_true',
@@ -208,8 +222,8 @@ def main():
     args = parser.parse_args()
     args.infile.close()
     args.infile = args.infile.name
-    #args.outfile.close()
-    #args.outfile = args.outfile.name
+    args.database.close()
+    args.database = args.database.name
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):

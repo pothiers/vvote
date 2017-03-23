@@ -1,2 +1,3 @@
-# Counting votes from file: /home/pothiers/sandbox/vvote/tests/data/mock1.xlsx
-Processed 29699 ballots
+Saving to DB
+Processed 400 ballots
+Saved LVR to sqlite DB: /home/pothiers/.vvote_output/lvr.db
