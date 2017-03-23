@@ -71,7 +71,6 @@ testCommand vv1_2 "race-counts-by-precinct.sh $LVRDB" "^\#" n
 #!   # COMPARE counted results with official SOVC results.
 #!   testCommand vv3_1 "countvote -v --sovc $genSOVC -t counts.txt -c $choicemap -r $racemap $LVR"
 
->>>>>>> master
 
 #!# almost 40k ballots; mock1.xlsx
 #!results1="$sto/mock1-results.out"
