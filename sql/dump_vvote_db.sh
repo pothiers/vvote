@@ -1,9 +1,12 @@
 #!/bin/bash
 db=$1
-echo "REPORT: All contents of database: $db"
+bdb=`basename $db`
+echo "# REPORT: All contents of database: $bdb"
+
+## Not invariant across machines (desktop/travis)
+#SELECT * FROM source   ORDER BY filename;
 
 read -r -d '' sql <<EOF
-SELECT * FROM source   ORDER BY filename;
 SELECT * FROM race     ORDER BY race_id;
 SELECT * FROM choice   ORDER BY choice_id, race_id;
 SELECT * FROM precinct ORDER BY precinct_code, race_id;

@@ -1,7 +1,4 @@
-REPORT: All contents of database: /home/pothiers/.vvote_output/lvr.db
-SELECT * FROM source   ORDER BY filename;
-filename
-/home/pothiers/sandbox/vvote/tests/data/2016GenSampleSet-400.lvr.xlsx
+# REPORT: All contents of database: lvr.db
 SELECT * FROM race     ORDER BY race_id;
 race_id|title|num_to_vote_for
 0|BOARD OF SUPERVISORS, DIST. 1|1

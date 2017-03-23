@@ -453,7 +453,7 @@ that represents contents from a set of ballots.
         lvrdb.insert_precinct_list(precinct_list)        
         lvrdb.insert_vote_list(vote_list)        
         lvrdb.close()
-        print('Saved LVR to sqlite DB: {}'.format(dbfile))
+        print('# Saved LVR to sqlite DB: {}'.format(dbfile))
               
     
 ##############################################################################

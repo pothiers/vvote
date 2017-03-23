@@ -95,12 +95,6 @@ that represents official results.
         choices = [self.ws.cell(row=3, column=c).value.strip()
                    for c in range(4, self.max_column+1)]
         totdict = dict()
-        #!for r in range(4, self.totalsrow):
-        #!for r,row in enumerate(self.ws.rows, start=1):
-        #!for r,row in enumerate(self.ws.rows[4:], start=4):
-        tallyRows = list(self.ws.rows)[4:]
-        print('Number of tally rows={}'.format(len(tallyRows)))
-        #!for row in tallyRows:
         for r,row in enumerate(self.ws.rows, start=1):
             if r == 1:
                 races = [cell.value for cell in row]
@@ -111,7 +105,6 @@ that represents official results.
                 print('DBG: choices({}) = {}'.format(len(choices), choices))
                 continue
             (county,pcode,precinct,numreg,btotal,bblank,*tally) = row
-            #!for cell in tally: #columns
             for c,cell in enumerate(row): #columns
                 if cell.value == None: continue
                 race = races[c]
@@ -190,7 +183,7 @@ that represents official results.
         sovcdb.insert_precinct_list(precinct_list)        
         sovcdb.insert_vote_list(vote_list)        
         sovcdb.close()
-        print('Saved SOVC to sqlite DB: {}'.format(dbfile))
+        print('# Saved SOVC to sqlite DB: {}'.format(dbfile))
 
 ##############################################################################
 
