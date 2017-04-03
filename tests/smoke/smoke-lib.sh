@@ -240,7 +240,7 @@ function testOutput () {
   egrep -v "${VARIANT}" $output > $outclean
   egrep -v "${VARIANT}" $GOLD > $goldclean
 
-  if ! diff $goldclean $outclean > $diff;  then
+  if ! diff -i -E -w -B $goldclean $outclean > $diff;  then
       if [ "y" = "$displayOutputP" ]; then
           cat $diff
       else

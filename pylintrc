@@ -304,7 +304,7 @@ ignored-classes=optparse.Values,thread._local,_thread._local,
 # system, and so shouldn't trigger E1101 when accessed. Python regular
 # expressions are accepted.
 #! generated-members=
-generated-members=max_row,max_column,cell,rows,calculate_dimension
+generated-members=max_row,max_column,cell,rows,calculate_dimension,merge_cells
 
 # List of decorators that produce context managers, such as
 # contextlib.contextmanager. Add to this list to register other decorators that

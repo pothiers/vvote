@@ -4,6 +4,9 @@ data="$HOME/sandbox/vvote/tests/data"
 data2="/data/vvote"
 out="$HOME/.vvote_output"
 
+LVR="$data/2016GenSampleSet-400.lvr.xlsx"
+SOVC="$data2/G2016_EXPORT1.xlsx"
+
 # Activate env and install latest
 source ~/sandbox/vvote/venv/bin/activate
 cd ~/sandbox/vvote
@@ -12,8 +15,6 @@ cd ~/sandbox/vvote
 
 ########################
 ## Sample invocations
-LVR="$data/2016GenSampleSet-400.lvr.xlsx"
-SOVC="$data2/G2016_EXPORT1.xlsx"
 
 lvr $LVR
 sovc $SOVC

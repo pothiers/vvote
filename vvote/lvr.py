@@ -282,11 +282,12 @@ that represents contents from a set of ballots.
                 ignore_choices.add(choice) 
             votes[race]['undervotes'] = undervotes
             choices[race].add('undervotes')
+            
 
             #!print('DBG: orderedchoices[race]({}):: dict[{}]={}'
             #!     .format(len(orderedchoices[race]),race,orderedchoices[race]))
             #for choice in set(choices[race]-ignore_choices):
-            for choice in choices[race]:
+            for choice in sorted(choices[race]):
                 if choice in ignore_choices:
                     continue
                 ws.cell(column=col, row=1).value = race
@@ -320,6 +321,17 @@ that represents contents from a set of ballots.
                 ws.cell(column=3, row=r).value = 'COUNTY TOTALS'
                 ws.cell(column=1, row=r+1).value = '_x001A_'
                 col += 1
+        firstmergecol = 7
+        lastmergecol = 7
+        for c in range(7,col):
+            thiscell = ws.cell(row=1, column=c)
+            if thiscell.value == ws.cell(row=1, column=firstmergecol).value:
+                lastmergecol = c
+            else:
+                ws.merge_cells(start_row=1, start_column=firstmergecol,
+                               end_row=1, end_column=lastmergecol)
+                firstmergecol = c
+                lastmergecol = c
         wb.save(sovcfilename)
         eu.transpose(sovcfilename, '{}.transpose.xlsx'.format(sovcfilename))
 

@@ -43,19 +43,24 @@ testCommand vv0_2 "dump_vvote_db.sh $LVRDB" "^\#" n
 #testCommand vv1_1 "countvote $LVR" "^\#" n
 testCommand vv1_2 "race-counts-by-precinct.sh $LVRDB" "^\#" n
 
+# Created an unofficial SOVC file.
+genSOVC="$OUT/2016GenSampleSet-400.sovc.xlsx"
+sovccsv="$OUT/2016GenSampleSet-400.sovc.csv"
+testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#" n
+#xls2csv --transpose $genSOVC $sovccsv
+xls2csv $genSOVC $sovccsv
+#sortedsovccsv="${sovccsv}.sorted"
+#sort $sovccsv > $sortedsovccsv
+testOutput vv2_2_out $sovccsv
+#SOVCDB="$OUT/sovc.db"
+#testCommand vv2_2 "sovc -d $SOVCDB $genSOVC" "^\#" y
+#testCommand vv2_3 "dump_vvote_db.sh $SOVCDB" "^\#" n
+
 #!   ###########################################
 #!   echo "WARNING: ignoring remainder of tests"
 #!   exit $return_code
 #!   ###########################################
 #!   
-#!   # Created an unofficial SOVC file.
-#!   genSOVC="$OUT/2016GenSampleSet-400.sovc.xlsx"
-#!   SOVCDB="$OUT/sovc.db"
-#!   #!sovcout="$OUT/2016GenSampleSet-400.sovc.csv"
-#!   testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#" n
-#!   #!xls2csv --transpose $genSOVC $sovcout
-#!   testCommand vv2_2 "sovc -d $SOVCDB $genSOVC" "^\#" y
-#!   testCommand vv2_3 "dump_vvote_db.sh $SOVCDB" "^\#" n
 #!   
 #!   
 #!   testOutput vv2_1_out $sovcout

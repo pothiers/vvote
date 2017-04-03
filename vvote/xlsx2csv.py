@@ -32,8 +32,8 @@ def xlsx2csv(xlsx_filename, csv_filename,
     else:
         ws = ws0        
                 
-    with open(csv_filename, 'w') as csvfile:
-        writer = csv.writer(csvfile)
+    with open(csv_filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, dialect='unix')
         ridx = 0
         for row in ws.rows:
             ridx += 1
