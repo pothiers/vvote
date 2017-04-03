@@ -221,9 +221,9 @@ that represents contents from a set of ballots.
                 print('\t{:10d}\t{}'
                       .format(num_ballots - votes[rp][na_tag], 'IN-DISTRICT'),
                       file=file)
-                print('\t{:10d}\t{}'
-                      .format(votes[rp][na_tag], 'OUT-OF-DISTRICT'),
-                      file=file)
+                #!print('\t{:10d}\t{}'
+                #!      .format(votes[rp][na_tag], 'OUT-OF-DISTRICT'),
+                #!      file=file)
         file.close()
 
 

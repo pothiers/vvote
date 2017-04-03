@@ -49,12 +49,10 @@ sovccsv="$OUT/2016GenSampleSet-400.sovc.csv"
 testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#" n
 #xls2csv --transpose $genSOVC $sovccsv
 xls2csv $genSOVC $sovccsv
-#sortedsovccsv="${sovccsv}.sorted"
-#sort $sovccsv > $sortedsovccsv
 testOutput vv2_2_out $sovccsv
-#SOVCDB="$OUT/sovc.db"
-#testCommand vv2_2 "sovc -d $SOVCDB $genSOVC" "^\#" y
-#testCommand vv2_3 "dump_vvote_db.sh $SOVCDB" "^\#" n
+SOVCDB="$OUT/sovc.db"
+#testCommand vv2_3 "sovc -d $SOVCDB $genSOVC" "^\#" y
+#testCommand vv2_4 "dump_vvote_db.sh $SOVCDB" "^\#" n
 
 #!   ###########################################
 #!   echo "WARNING: ignoring remainder of tests"
