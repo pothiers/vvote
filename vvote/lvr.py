@@ -30,24 +30,14 @@ that represents contents from a set of ballots.
    Col 3:: Ballot Style
    Col 4 to M::
 """
-    # votes[(race,precinct)][choice] = cnt; Precinct is number or "ALL"
-    votes = defaultdict(lambda : defaultdict(int)) 
-    n_votes = defaultdict(int)  # n_votes[race] => num-to-vote-for
-    choices = defaultdict(set) # choices[race] = set([choice1, choice2,...])
-    #orderedchoices = defaultdict(list) # d[race] => [choice1, ...]
-    orderedraces = list()
-    #!precincts = set('ALL')
-    precincts = set()
-    nballots = 0
 
-    MARKER='Cast Vote Record'
-    nontitles = set(['Cast Vote Record',
-                     'Serial Number',
-                     'Precinct',
-                     'Ballot Style'])
+    def __init__(self):
+        self.reset()
 
-    def __init__(self, lvr_file, # Excel (.xslx) filename,
-                 verbose=False):
+    def count_LVR(self, lvr_file, # Excel (.xslx) filename,
+              verbose=False):
+        """Tally from LVR. Summarize into class variables."""
+        self.reset()
         wb = load_workbook(filename=lvr_file, read_only=True)
         ws = wb.active
         if (ws.max_row == 1) or (ws.max_column == 1):
@@ -69,7 +59,24 @@ that represents contents from a set of ballots.
         self.ws = ws
         self.max_row = ws.max_row
         self.max_column = ws.max_column
+        self.count_votes(verbose=verbose)
 
+    def reset(self):
+        # votes[(race,precinct)][choice] = cnt; Precinct is number or "ALL"
+        self.votes = defaultdict(lambda : defaultdict(int)) 
+        self.n_votes = defaultdict(int)  # n_votes[race] => num-to-vote-for
+        self.choices = defaultdict(set) # choices[race] = set([choice1, c2,...])
+        #orderedchoices = defaultdict(list) # d[race] => [choice1, ...]
+        self.orderedraces = list()
+        #!precincts = set('ALL')
+        self.precincts = set()
+        self.nballots = 0
+        
+        self.MARKER='Cast Vote Record'
+        self.nontitles = set(['Cast Vote Record',
+                         'Serial Number',
+                         'Precinct',
+                         'Ballot Style'])
 
 
     def count_votes(self,
@@ -81,6 +88,7 @@ that represents contents from a set of ballots.
                     undervotetag='undervote'):
         """Talley ballots. Store results in class variables."""
 
+        self.reset()
         votes = self.votes
         choices = self.choices
         n_votes = self.n_votes
@@ -189,7 +197,47 @@ that represents contents from a set of ballots.
         # END count_votes()
 
 
-    def emit_results(self, totals_only=False, outputfile = None):
+    def emit_total_results(self, file):
+        na_tag='<OOD>' # Out of District Ballots
+        votes = self.votes
+        choices = self.choices
+        n_votes = self.n_votes
+        num_ballots = self.nballots
+        orderedraces = self.orderedraces
+        totalvotes = defaultdict(lambda : defaultdict(int)) 
+
+        for prec in sorted(self.precincts):
+            for race in orderedraces:
+                rp = (race,prec) 
+                under = set([k for k in votes[rp].keys() if 'undervote-' in k])
+                #!for choice in sorted(set(votes[rp].keys()) - under):
+                for choice in sorted(votes[rp].keys()):
+                    if choice != na_tag:
+                        totalvotes[race][choice] += votes[rp][choice]
+                #!for choice in under:
+                #!    totalvotes[race]['undervotes'] += votes[rp][choice]
+        for race in orderedraces:
+            print(file=file)
+            print("{} (vote for {})"
+                  .format(race, n_votes[race]), file=file)
+            under = set([k for k in votes[race].keys() if 'undervote-' in k])
+            for choice in sorted(set(totalvotes[race].keys()) - under):
+                if choice != na_tag:
+                        print('\t{:10d}\t{}'
+                              .format(totalvotes[race][choice], choice),
+                              file=file)
+            for choice in under:
+                print('\t{:10d}\t{}'.format(totalvotes[race][choice], choice),
+                      file=file)
+            print('\t{:10d}\t{}'
+                  .format(num_ballots - totalvotes[race][na_tag],
+                          'IN-DISTRICT'),
+                  file=file)
+            #!print('\t{:10d}\t{}'
+            #!      .format(totalvotes[race][na_tag], 'OUT-OF-DISTRICT'),
+            #!      file=file)
+    
+    def emit_precinct_results(self, file):
         na_tag='<OOD>' # Out of District Ballots
         votes = self.votes
         choices = self.choices
@@ -197,13 +245,6 @@ that represents contents from a set of ballots.
         num_ballots = self.nballots
         orderedraces = self.orderedraces
 
-        if outputfile == None:
-            file=sys.stdout
-        else:
-            file = open(outputfile, mode='w')
-        #!plist = sorted(list((p for p in self.precincts if p != 'ALL')))
-        #!preclist = ['ALL'] if totals_only else (plist + ['ALL'])
-        #!for prec in preclist:
         for prec in sorted(self.precincts):
             for race in orderedraces:
                 rp = (race,prec) 
@@ -211,9 +252,9 @@ that represents contents from a set of ballots.
                 print("{}, precint:{} (vote for {})"
                       .format(race, prec, n_votes[race]), file=file)
                 #for choice in sorted(choices[race]):
-                special = set([k for k in votes[rp].keys()
+                under = set([k for k in votes[rp].keys()
                                if k[:10] == 'undervote'])
-                for choice in sorted(set(votes[rp].keys()) - special):
+                for choice in sorted(set(votes[rp].keys()) - under):
                     if choice != na_tag:
                         print('\t{:10d}\t{}'
                               .format(votes[rp][choice], choice),
@@ -224,12 +265,25 @@ that represents contents from a set of ballots.
                 #!print('\t{:10d}\t{}'
                 #!      .format(votes[rp][na_tag], 'OUT-OF-DISTRICT'),
                 #!      file=file)
+        
+        
+    def emit_results(self, totals_only=True, outputfile = None):
+        if outputfile == None:
+            file=sys.stdout
+        else:
+            file = open(outputfile, mode='w')
+        if totals_only:
+            self.emit_total_results(file)
+        else:
+            self.emit_precinct_results(file)
         file.close()
 
 
     def write_sovc(self,  sovcfilename,
                    orderedchoices=None,
-                   writeintag='Write-in',
+                   writeintag='WRITE-IN',
+                   overvotetag='OVER VOTES',
+                   undervotetag='UNDER VOTES',
                    na_tag='<OOD>'):
         votes = self.votes
         choices = self.choices
@@ -275,49 +329,49 @@ that represents contents from a set of ballots.
         for race in orderedraces:
             nvotes = n_votes[race]
 
-            # sum values from N*undervote-N (N=[1..nvotes])
-            undervotes = 0
-            for n in range(1,nvotes+1):
-                choice = 'undervote-{}'.format(n)
-                undervotes += (n * votes[race][choice])
-                ignore_choices.add(choice) 
-            votes[race]['undervotes'] = undervotes
-            choices[race].add('undervotes')
-            choices[race].add(writeintag)
+            #!choices[race].add('undervotes')
+            #!choices[race].add(writeintag)
 
             #!print('DBG: orderedchoices[race]({}):: dict[{}]={}'
             #!     .format(len(orderedchoices[race]),race,orderedchoices[race]))
             #for choice in set(choices[race]-ignore_choices):
-            for choice in sorted(choices[race]):
-                if choice in ignore_choices:
-                    continue
+            for choice in (sorted(list(choices[race]))
+                           +[writeintag, overvotetag, undervotetag]):
+                if choice in ignore_choices:  continue
+                if choice[:10] == 'undervote-':  continue
+                
                 ws.cell(column=col, row=1).value = race
                 ws.cell(column=col, row=3).value = choice
-                #!count = votes[race][choice]
-                #!if choice == 'overvote':
-                #!    count *= nvotes
-                #!ws.cell(column=col, row=4).value = count
+                #!print('DBG: race={} \t choice={}'.format(race,choice))
+
                 r=4
-                #prec_list = sorted(self.precincts - {'ALL'})
-                prec_list = sorted(self.precincts)
-                for prec in prec_list:
-                    rp = (race,prec) 
-                    count = votes[rp][choice]
-                    if choice == 'overvote':
-                        count *= nvotes
-                    ws.cell(column=col, row=r).value = count
+                for prec in sorted(self.precincts):
                     ws.cell(column=2, row=r).value = prec
                     ws.cell(column=3, row=r).value = prec
-                    votes[(race,'ALL')][choice] += count
+                    rp = (race,prec)
+
+                    # sum values from N*undervote-N (N=[1..nvotes])
+                    if choice == undervotetag:
+                        undervotes = 0
+                        for n in range(1,nvotes+1):
+                            uchoice = 'undervote-{}'.format(n)
+                            undervotes += (n * votes[rp][uchoice])
+                            #ignore_choices.add(choice) 
+                        #!votes[rp]['undervotes'] = undervotes
+                        count = undervotes
+                    elif choice == overvotetag:
+                        count = nvotes * votes[rp]['overvote']
+                    else: # Named ballot choice
+                        count = votes[rp][choice]
+                    ws.cell(column=col, row=r).value = count
+                    votes[(race,'ALL')][choice] += count # all precincts
                     r += 1
+                    # DONE precincts
                 #!prec = 'ALL'
                 #!rp = (race,prec)
                 achoices = votes.pop((race,'ALL'))
-                count = achoices[choice]
-
-                if choice == 'overvote':
-                    count *= nvotes
-                ws.cell(column=col, row=r).value = count
+                total = achoices[choice]
+                ws.cell(column=col, row=r).value = total
                 ws.cell(column=2, row=r).value =  'ZZZ'
                 ws.cell(column=3, row=r).value = 'COUNTY TOTALS'
                 ws.cell(column=1, row=r+1).value = '_x001A_'
@@ -426,8 +480,9 @@ that represents contents from a set of ballots.
 
     def save(self, dbfile='LVR.db'):
         """Save summarized contents in sqlite database"""
-        lvrdb = BallotDb(dbfile, self.filename)
-        self.count_votes()
+        lvrdb = BallotDb()
+        lvrdb.new_db(dbfile, self.filename)
+        #!self.count_votes()
 
         cid = 0
         choiceLut = dict() # lut[title] = id
@@ -469,6 +524,10 @@ that represents contents from a set of ballots.
         lvrdb.close()
         print('# Saved LVR to sqlite DB: {}'.format(dbfile))
               
+    def load(self, dbfile='LVR.db'):
+        """Load summarized contents from sqlite database"""
+        self.reset()
+        
     
 ##############################################################################
 

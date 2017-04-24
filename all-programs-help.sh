@@ -11,7 +11,7 @@ available though ~vvote~ and brief usage help for each.
 
 EOF
 
-for prog in countvote sovc transpose genmap xls2csv
+for prog in countvote sovc lvr transpose genmap xls2csv compare
 do
     echo "* $prog" >> $out
     $prog --help   >> $out

@@ -37,7 +37,11 @@ CREATE TABLE vote (
 '''
 
 class BallotDb():
-    def __init__(self, dbfile, sourcefile):
+    def __init__(self):
+        self.source = None
+
+    def new_db(self, dbfile, sourcefile):
+        self.source = sourcefile
         if os.path.exists(dbfile):
             os.remove(dbfile)
 

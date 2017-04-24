@@ -116,7 +116,7 @@ def main():
                         help=('Name of SOVC (xslx) file to compare to results.'
                               '(No comparison done if not given.)'))
     parser.add_argument('-f', '--format',
-                        help='Format of output talley file.',
+                        help='Format of output talley file. For SOVC, output (specified with --talley option) is Excel (.xlsx) format',
                         choices=['text', 'SOVC'],
                         default='text')
     parser.add_argument('-c', '--choice_map',
@@ -152,20 +152,31 @@ def main():
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
     print('# Counting votes from file: {}'.format(args.LVRfile))
-    lvr = Lvr(args.LVRfile)
-    lvr.count_votes(verbose=args.verbose)
-    lvr.save()
+    lvr = Lvr()
+    lvr.count_LVR(args.LVRfile)
+    lvr.save(dbfile)
+    lvr.load(dbfile)
     # Vote counts now in: votes
     if args.format == 'text':
         lvr.emit_results(outputfile=args.talley)
     elif args.format == 'SOVC':
         lvr.write_sovc(args.talley)
-        
-    if args.sovc != None:
-        #! sovc = Sovc(args.sovc)
-        lvr.compare(args.sovc,
-                    choice_map=args.choice_map,
-                    race_map=args.race_map)
+    
+    
+    #! lvr = Lvr(args.LVRfile)
+    #! lvr.count_votes(verbose=args.verbose)
+    #! lvr.save(dbfile)
+    #! # Vote counts now in: votes
+    #! if args.format == 'text':
+    #!     lvr.emit_results(outputfile=args.talley)
+    #! elif args.format == 'SOVC':
+    #!     lvr.write_sovc(args.talley)
+    #!     
+    #! if args.sovc != None:
+    #!     #! sovc = Sovc(args.sovc)
+    #!     lvr.compare(args.sovc,
+    #!                 choice_map=args.choice_map,
+    #!                 race_map=args.race_map)
 
 
 if __name__ == '__main__':
