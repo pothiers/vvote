@@ -94,7 +94,7 @@ that represents official results.
                  for c in range(4, self.max_column+1)]
         choices = [self.ws.cell(row=3, column=c).value.strip()
                    for c in range(4, self.max_column+1)]
-        totdict = dict()
+        totdict = dict() 
         for r,row in enumerate(self.ws.rows, start=1):
             if r == 1:
                 races = [cell.value for cell in row]
@@ -106,6 +106,7 @@ that represents official results.
                 continue
             (county,pcode,precinct,numreg,btotal,bblank,*tally) = row
             for c,cell in enumerate(row): #columns
+                logging.debug('c={}'.format(c))
                 if cell.value == None: continue
                 race = races[c]
                 choice = choices[c]

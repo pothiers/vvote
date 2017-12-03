@@ -31,8 +31,12 @@ that represents contents from a set of ballots.
    Col 4 to M::
 """
 
-    def __init__(self):
+    def __init__(self, lvr_excel, dbfile):
         self.reset()
+        self.count_LVR(lvr_excel)
+        print('Saving to DB: {}'.format(dbfile))
+        self.save(dbfile)
+        #self.count_LVR(self, lvr_excel)
 
     def count_LVR(self, lvr_file, # Excel (.xslx) filename,
               verbose=False):
@@ -480,8 +484,7 @@ that represents contents from a set of ballots.
 
     def save(self, dbfile='LVR.db'):
         """Save summarized contents in sqlite database"""
-        lvrdb = BallotDb()
-        lvrdb.new_db(dbfile, self.filename)
+        lvrdb = BallotDb(dbfile, self.filename)
         #!self.count_votes()
 
         cid = 0
@@ -538,7 +541,7 @@ def main():
         epilog='EXAMPLE: %(prog)s lvr.xslx'
         )
     dfdb='LVR.db'
-    parser.add_argument('--version', action='version', version='1.0.1')
+    parser.add_argument('--version', action='version', version='2.0.1')
     parser.add_argument('infile', type=argparse.FileType('r'),
                         help='Input file')
     parser.add_argument('-d', '--database', type=argparse.FileType('w'),
@@ -569,9 +572,10 @@ def main():
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
     #!print('Reading counts from file: "{}"'.format(args.infile))
-    lvr = Lvr(args.infile)
+    lvr = Lvr(args.infile, dbfile=args.database)
     print('Saving to DB')
-    lvr.save(dbfile=args.database)
+    #!lvr.save(dbfile=args.database)
+    
     #!print('Getting totals')
     #!totdict = sovc.get_totals()
     #!print('Totals = ',)

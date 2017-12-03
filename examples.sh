@@ -14,10 +14,12 @@ cd ~/sandbox/vvote
 ./install.sh
 
 ########################
+## See also: ~/sandbox/vvote/tests/smoke/smoke.all.sh
+
 ## Sample invocations
 
-lvr $LVR
-sovc $SOVC
+lvr $LVR    # => LVR.db
+sovc $SOVC  # => SOVC.db
 
 # Create mappings for RACE and CHOICE titles (SOVC to LVR)
 genmap -v $data/day1-sovc.xlsx $data/day1-lvr.xlsx rm.csv cm.csv

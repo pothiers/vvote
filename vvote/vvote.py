@@ -107,9 +107,14 @@ def main():
         epilog='EXAMPLE: %(prog)s --verbose --sovc /data/mock-election/G2016_EXPORT1.xlsx /data/mock-election/day-1-cvr.xlsx results1.txt'
         #  (49418 ballots)
         )
+    dfdb='LVR.db'
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('LVRfile', type=argparse.FileType('r'),
                         help='Input LVR excel (.xslx) file')
+    parser.add_argument('-d', '--database', type=argparse.FileType('w'),
+                        default=dfdb,
+                        help=('SQlite database file to save LVR summary into.'
+                              '  [default="{}"]').format(dfdb))
     parser.add_argument('-t', '--talley', type=argparse.FileType('w'),
                         help='Vote count output (SOVC equiv)')
     parser.add_argument('-s', '--sovc', type=argparse.FileType('r'),
@@ -136,6 +141,9 @@ def main():
     args = parser.parse_args()
     args.LVRfile.close()
     args.LVRfile = args.LVRfile.name
+    args.database.close()
+    args.database = args.database.name
+
     if args.talley:
         args.talley.close()
         args.talley = args.talley.name
@@ -152,10 +160,10 @@ def main():
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
     print('# Counting votes from file: {}'.format(args.LVRfile))
-    lvr = Lvr()
-    lvr.count_LVR(args.LVRfile)
-    lvr.save(dbfile)
-    lvr.load(dbfile)
+    #lvr.count_LVR(args.LVRfile)
+    #lvr.save(dbfile)
+    lvr = Lvr(args.LVRfile, args.database)
+    lvr.load(args.database)
     # Vote counts now in: votes
     if args.format == 'text':
         lvr.emit_results(outputfile=args.talley)

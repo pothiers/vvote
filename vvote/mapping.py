@@ -46,7 +46,7 @@ def gen_map(sovc_xslx, lvr_xslx,
     races_sovc = sovc.get_races()
     choices_sovc = sovc.get_choices()
 
-    lvr = Lvr(lvr_xslx)
+    lvr = Lvr(lvr_xslx, 'LVR.db')
     races_lvr,choices_lvr = lvr.get_titles(verbose=verbose)
 
     if racematrix != None:

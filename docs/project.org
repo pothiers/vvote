@@ -7,8 +7,6 @@ Everything is derived from LVR.
 2. Max number of votes for each issue.
    (1 + number of None columnns after IssueTitle)
 
-
-
 * As implemented <2016-12-28 Wed>
 Each program supports a ~--help~ option which should be used to get
 usage summary.  More details are given in this section

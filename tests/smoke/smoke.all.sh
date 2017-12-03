@@ -19,7 +19,6 @@ sto=$dir
 
 return_code=0
 SMOKEOUT="README-smoke-results.txt"
-
 echo "" 
 echo "Starting tests in \"$dir\" ..."
 echo ""
@@ -36,14 +35,16 @@ PATH=$REPO/sql:$PATH
 
 ##############################################################################
 LVRDB="$OUT/lvr.db"
+# Convert Excel to DB
 testCommand vv0_1 "lvr -d $LVRDB $LVR" "^\#" n
+# REPORT: All contents of lvr.db
 testCommand vv0_2 "dump_vvote_db.sh $LVRDB" "^\#" n
 
 # simple vote count output (with precincts) to stdout
 #testCommand vv1_1 "countvote $LVR" "^\#" n
 testCommand vv1_2 "race-counts-by-precinct.sh $LVRDB" "^\#" n
 
-# Created an unofficial SOVC file.
+# Created an unofficial SOVC file from lvr.db input.
 genSOVC="$OUT/2016GenSampleSet-400.sovc.xlsx"
 sovccsv="$OUT/2016GenSampleSet-400.sovc.csv"
 testCommand vv2_1 "countvote -f SOVC -t $genSOVC $LVR" "^\#" n
