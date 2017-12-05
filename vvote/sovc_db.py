@@ -4,6 +4,12 @@
 - Export as CSV. 
 
 SOVC :: Statement Of Votes Cast; official election results
+
+Underlying dimensionality of SOVC Data (value is count-of-votes):
+1. County
+2. Precinct
+3. Race
+4. Choice
 """
 # Docstrings intended for document generation via pydoc
 
@@ -16,6 +22,10 @@ import os.path
 import sqlite3
 from collections import defaultdict
 import pprint
+
+##############################################################################
+### Database
+###
 
 sovc_schema = '''
 CREATE TABLE source (
@@ -105,6 +115,74 @@ class SovcDb():
         self.conn.commit()
         self.conn.close()
 
+    # OUTPUT: Race, NumToVoteFor, Choice, ChoiceId, ...
+    def to_csv(self,csv_filename):
+        self.conn = sqlite3.connect(self.dbfile)
+        cur = self.conn.cursor()
+        
+        choice_sql = '''SELECT 
+  race.title AS rt,   
+  race.num_to_vote_for as nv,
+  choice.title AS ct,  
+  choice.choice_id as cid
+FROM choice, race
+WHERE race.race_id = choice.race_id 
+ORDER BY race_id ASC, choice_id ASC;'''
+
+        sql_precinct = '''SELECT 
+  precinct.county_number AS county,
+  precinct.precinct_code AS pcode,
+  precinct.precinct_name AS pname,
+  precinct.registered_voters AS totvot,
+  precinct.ballots_cast_total AS totbal,
+  precinct.ballots_cast_blank AS blankbal,
+FROM precinct 
+ORDER BY precinct.county_number ASC, pcode ASC;'''
+
+        sql_race = '''SELECT vote.count AS count
+FROM vote, precinct
+WHERE vote.precinct_code = precinct.precinct_code
+ORDER BY race_id
+;
+'''
+
+        rc_list = [(row['rt'], row['ct'], row['cid'])
+                   for row in cur.execute(choice_sql)]
+        headers1 = ('COUNTY NUMBER,PRECINCT CODE,PRECINCT NAME,'
+                    'REGISTERED VOTERS - TOTAL,BALLOTS CAST - TOTAL,'
+                    'BALLOTS CAST - BLANK').split(',')
+        headers1.extend([r for r,nv,c,cid in rc_list])        
+        headers2 = ['Number to Vote For ->', '','','','','']
+        headers2.extend([nv for r,nv,c,cid in rc_list])
+        headers3 = ['Choice ->', '','','','','']
+        headers3.extend([c for r,nv,c,cid in rc_list])
+        
+        fns = 'county,pcode,pname,totvot,totbal,blankbal'.split(',')
+        fns.extend([c for r,c in rc_list])
+        with open(csv_filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, dialect='excel')
+            writer.writerow(headers1)
+            writer.writerow(headers2)
+            writer.writerow(headers3)
+            # loop over:
+            #   Precinct (by County/Precinct),
+            #   Race+Choice (by Race/Choice
+            for row in cur.execute(sql_precinct):
+                c6 = [row['county'], row['pcode'], row['pname'],
+                      row['totvot'], row['totbal'],row['blankbal']]
+                votes_list = list()
+                for row in cur.execute(sql_race): # for one precinct
+                    votes_list.append(row['count'])
+                writer.writerow(c6 + votes_list)
+            
+
+### end SovcDb
+##############################################################################
+
+##############################################################################
+### Spreadsheet
+###
+
 class SovcSheet():
     """CSV format (per Nov-2017 results; '171107C_EXPORT DAY 2.CSV')
    Row 1:: Race titles (duplicated over columns representing choices)
@@ -152,17 +230,25 @@ class SovcSheet():
         print('''
 Sheet Summary:
    filename: {}
+
    Max ROW:  {}
+   minDataR: {}
    Max COL:  {}
    minDataC: {}
-   Cell cnt: {}'''
-              .format(self.filename, self.max_row, self.max_col, self.minDataC,
-                      sum([len(v) for v in self.cells.values()])))
+   Cell cnt: {}
 
-    
+   Race cnt:   {}
+   Choice cnt: {}
+'''
+              .format(self.filename,
+                      self.max_row, self.minDataR,
+                      self.max_col, self.minDataC,
+                      sum([len(v) for v in self.cells.values()]),
+                      len(self.raceLut), len(self.choiceLut),
+              ))
 
     def get_race_lists(self):
-        logging.debug('DBG: get RACE and CHOICE lists')
+        logging.debug('Get RACE and CHOICE lists')
         race_list = list()   # [(rid, racetitle, numToVoteFor), ...]
         choice_list = list() # [(cid, choicetitle, party), ...]
         c1 = self.minDataC
@@ -173,11 +259,11 @@ Sheet Summary:
             race_list.append((rid, racetitle, None))
             self.raceLut[racetitle] = rid
             for c2 in range(c1, self.max_col+1):
-                logging.debug('c1={}, c2={}'.format(c1,c2))
+                #!logging.debug('c1={}, c2={}'.format(c1,c2))
                 cid = c2
                 if racetitle == self.cells[1][c2]:
                     choicetitle = self.cells[3][c2]
-                    logging.debug('Choicetitle={}'.format(choicetitle))
+                    #!logging.debug('Choicetitle={}'.format(choicetitle))
                     choice_list.append((cid, choicetitle, rid, None))
                     self.choiceLut[choicetitle] = cid
                 else:
@@ -185,62 +271,48 @@ Sheet Summary:
                     break
             c1 = cid + 1 
         logging.debug('Race cnt={}, Choice cnt={}'
-
                       .format(len(race_list), len(choice_list)))
         return race_list, choice_list
         
     def get_precinct_votes(self):
         "RETURN: dict[(race,choice)] => (count,precinct,regvot,baltot,balblank)"
-        logging.debug('DBG: get PRECINCT and VOTE lists')
+        logging.debug('Get PRECINCT and VOTE lists')
 
-        totdict = dict() 
-        #!races = [self.cells[1][c]
-        #!         for c in range(self.minDataC, self.max_col+1)]
-        #!choices = [self.cells[3][c]
-        #!           for c in range(self.minDataC, self.max_col+1)]
-        #!logging.debug('DBG: races({}) = {}'.format(len(races), races))
-        #!logging.debug('DBG: choices({}) = {}'.format(len(choices), choices))
-
-        for col in range(self.minDataC, self.max_col+1):
-            race = self.cells[1][col]
-            choice = self.cells[3][col]
-            if race == None or choice == None: continue
-            for row in range(self.minDataR, self.max_row+1):
-                #logging.debug('DBG-1 row={}, col={}'.format(row, col))
-                totdict[(race, choice)] = (
-                    self.cells[row][col], # vote count
-                    self.cells[row][1],   # county number
-                    self.cells[row][2],   # precinct code
-                    self.cells[row][3],   # precinct name
-                    self.cells[row][4],   # reg voters total
-                    self.cells[row][5],   # ballots total
-                    self.cells[row][6]    # ballots blank
-                    )
-
-        precinct_list = list() 
+        precinct_list = list() # [(race_id, choice_id, county, pcode, pname,
+                               # regvot, baltot, balblank), ...]
         vote_list = list()     # [(cid, precinct_code, count), ...]
-        for ((racetitle,choicetitle),
-             (count,county,pcode, precinct,regvot,baltot,balblank)
-        ) in totdict.items():
-            choice_id = self.choiceLut.get(choicetitle, None)
-            precinct_list.append((self.raceLut[racetitle],
-                                  choice_id,
-                                  county, # county_number
-                                  pcode,
-                                  precinct,
-                                  regvot, # registered_voters integer,
-                                  baltot, # ballots_cast_total integer,
-                                  balblank # ballots_cast_blank integer
-                                  ))
-            vote_list.append((choice_id, precinct, count))
+        for col in range(self.minDataC, self.max_col+1):
+            racetitle = self.cells[1][col]
+            race_id = self.raceLut[racetitle]
+            choicetitle = self.cells[3][col]
+            choice_id = self.choiceLut[choicetitle]
+            for row in range(self.minDataR, self.max_row+1):
+                precinct_list.append(
+                    (race_id,
+                     choice_id,
+                     self.cells[row][1],   # county number
+                     self.cells[row][2],   # precinct code
+                     self.cells[row][3],   # precinct name
+                     self.cells[row][4],   # reg voters total
+                     self.cells[row][5],   # ballots total
+                     self.cells[row][6]    # ballots blank
+                    ))
+                vote_list.append(
+                    (choice_id,
+                     self.cells[row][2],
+                     self.cells[row][col] # vote count
+                    ))
         return (precinct_list, vote_list)
-        
+
+###
+### end SovcSheet
+##############################################################################
+
 
 def csv_to_db(csvfile, sqlite_file):
     """Append to existing Sqlite DB (or create new one).
 """
     sovcsheet = SovcSheet(csvfile.name)
-    sovcsheet.summary()
     sovcdb = SovcDb(sqlite_file, sovcsheet)
 
     (race_list, choice_list) = sovcsheet.get_race_lists()
@@ -248,13 +320,16 @@ def csv_to_db(csvfile, sqlite_file):
     sovcdb.insert_choice_list(choice_list)
 
     (precinct_list, vote_list) = sovcsheet.get_precinct_votes()
+    #logging.debug('DBG: precinct_list={}'.format(precinct_list))
     sovcdb.insert_precinct_list(precinct_list)        
     sovcdb.insert_vote_list(vote_list)        
 
     sovcdb.close()
     logging.debug('DBG: Created RACE and CHOICE tables in {}'
                   .format(sqlite_file))
-    
+
+    sovcsheet.summary()
+
 
 
 ##############################################################################

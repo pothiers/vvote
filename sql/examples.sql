@@ -19,3 +19,12 @@ WHERE vote.choice_id=choice.choice_id
     AND race.race_id=choice.race_id
     AND choice.title like "%undervote%"
 ORDER BY race.title ;
+
+
+-- List Choices
+SELECT race.title, choice.title FROM choice, race
+WHERE race.race_id = choice.race_id ORDER BY race.title;
+
+-- Sanity; precinct
+    sqlite3 SOVC.db "SELECT count(distinct(precinct_name)) from precinct;"
+
