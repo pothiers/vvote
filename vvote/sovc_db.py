@@ -320,7 +320,6 @@ def csv_to_db(csvfile, sqlite_file):
     sovcdb.insert_choice_list(choice_list)
 
     (precinct_list, vote_list) = sovcsheet.get_precinct_votes()
-    #logging.debug('DBG: precinct_list={}'.format(precinct_list))
     sovcdb.insert_precinct_list(precinct_list)        
     sovcdb.insert_vote_list(vote_list)        
 

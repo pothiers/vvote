@@ -25,6 +25,4 @@ ORDER BY race.title ;
 SELECT race.title, choice.title FROM choice, race
 WHERE race.race_id = choice.race_id ORDER BY race.title;
 
--- Sanity; precinct
-    sqlite3 SOVC.db "SELECT count(distinct(precinct_name)) from precinct;"
 
