@@ -6,12 +6,10 @@
 SOVC :: Statement Of Votes Cast; official election results
 
 Underlying dimensionality of SOVC Data (value is count-of-votes):
-1. County
-2. Precinct
-3. Race
-4. Choice
+1. Precinct (many-to-one County)
+2. Race
+3c. Choice
 """
-# Docstrings intended for document generation via pydoc
 
 import sys
 import argparse

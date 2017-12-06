@@ -90,6 +90,7 @@ setup(
             'countvote=vvote.vvote:main',
             'sovc=vvote.sovc:main',
             'sovcdb=vvote.sovc_db:main',
+            'lvrdb=vvote.lvr_db:main',
             'lvr=vvote.lvr:main',
             'transpose=vvote.transpose:main',
             'genmap=vvote.mapping:main',
