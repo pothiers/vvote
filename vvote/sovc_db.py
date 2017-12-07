@@ -155,8 +155,8 @@ ORDER BY race_id
         headers3 = ['Choice ->', '','','','','']
         headers3.extend([c for r,nv,c,cid in rc_list])
         
-        fns = 'county,pcode,pname,totvot,totbal,blankbal'.split(',')
-        fns.extend([c for r,c in rc_list])
+        #!fns = 'county,pcode,pname,totvot,totbal,blankbal'.split(',')
+        #!fns.extend([c for r,c in rc_list])
         with open(csv_filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, dialect='excel')
             writer.writerow(headers1)

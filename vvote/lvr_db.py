@@ -36,8 +36,7 @@ CREATE TABLE race (
 );
 CREATE TABLE choice (
    choice_id integer primary key,
-   title text,
-   race_id integer
+   title text
 );
 CREATE TABLE cvr (
    cvr_id integer primary key,
@@ -46,6 +45,7 @@ CREATE TABLE cvr (
 );
 CREATE TABLE vote (
    cvr_id integer,
+   race_id integer,
    choice_id integer
 );
 '''
@@ -97,19 +97,52 @@ class LvrDb():
             for c in range(sheet.minDataC, sheet.max_col + 1):
                 race_id = sheet.raceLut[cells[1][c]]
                 choice_title = cells[r].get(c,None)
-                if choice_title:
+                if choice_title: # not blank
                     choice_id = sheet.choiceLut[choice_title]
                     #!logging.debug('cells[{},{}] = {} [{}]'.
                     #!              format(r,c,cells[r][c], choice_id))
                     if choice_id not in choices:
                         choices.add(choice_id)
-                        cur.execute('INSERT INTO choice VALUES (?,?,?)',
-                                    (choice_id, cells[r][c], race_id))
-                    cur.execute('INSERT INTO vote VALUES (?,?)',
-                                (cvr_id, choice_id))
+                        cur.execute('INSERT INTO choice VALUES (?,?)',
+                                    (choice_id, cells[r][c]))
+                    cur.execute('INSERT INTO vote VALUES (?,?,?)',
+                                (cvr_id, race_id, choice_id))
 
         self.conn.commit()
         self.conn.close()
+
+    # OUTPUT: CVR_id, Precinct, BallotStyle, (Race *), ...
+#!    def to_csv(self, csv_filename):
+#!        race_sql = '''SELECT race_id as id, votesAllowed as numV, title
+#!FROM race ORDER BY title;'''  
+#!        cvr_sql = '''SELECT 
+#!  cvr_id, 
+#!  precinct_code as precinct, 
+#!  ballot_type as ballot
+#!FROM cvr ORDER BY cvr_id;'''  
+#!        vote_sql = '''SELECT race.votesAllowed as numV, choice.title
+#!FROM choice LEFT JOIN race ON race.race_id = choice.race_id
+#!ORDER BY race.title;'''  
+#!        self.conn = sqlite3.connect(self.dbfile)
+#!        cur = self.conn.cursor()
+#!        headers = 'Cast Vote Record,Precinct,Ballot Style'.split(',')
+#!        race_list = list # [(id, votesAllowed, title), ...]
+#!        for row in cur.execute(race_sql):
+#!            race_list.append((row['id'],row['numV'],row['title']))
+#!            headers.extend([row['title'] * row['numV']])
+#!        with open(csv_filename, 'w', newline='') as csvfile:
+#!            writer = csv.writer(csvfile, dialect='excel')
+#!            writer.writerow(headers)
+#!
+#!            for row in cur.execute(cvr_sql):
+#!                cvr_cols=[row['cvr_id'],row['precinct'],row['ballot']]
+#!                vote_cols = list()
+#!                for row2 in cur.execute(vote_sql):
+#!                    writer.writerow(cvr_cols+vote_cols)
+#!
+            
+        
+
 ### end LvrDb
 ##############################################################################
 
