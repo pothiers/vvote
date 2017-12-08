@@ -52,8 +52,8 @@ sqlite3 LVR.db "SELECT count() FROM vote;"
 sqlite3  LVR.db <<EOF
 .headers on
 .mode column
-.width 50,5,5
-SELECT  race.title, race.votesAllowed, count(choice.choice_id) as numChosen FROM race left join choice, race_choice on race_choice.race_id = race.race_id AND race_choice.choice_id = choice.choice_id group by race.title;
+.width 50 5 5
+SELECT  race.title, race.votesAllowed, count(choice.choice_id) as numChosen FROM race LEFT JOIN choice, race_choice ON race_choice.race_id = race.race_id AND race_choice.choice_id = choice.choice_id group by race.title;
 EOF
 
 
@@ -62,7 +62,7 @@ EOF
 sqlite3  LVR.db <<EOF
 .headers on
 .mode column
-.width 7,50,50,2
+.width 7 50 50 2
 SELECT cvr.cvr_id, race.title, choice.title, race.votesAllowed as numV
 FROM vote, choice, race, cvr
 WHERE vote.cvr_id=176882 
@@ -73,3 +73,23 @@ ORDER BY vote.cvr_id ASC, race.title ASC;
 EOF
 
 # 
+SELECT  race.race_id, race.votesAllowed as numV, choice.title
+FROM choice LEFT JOIN race, vote
+ON  vote.cvr_id=176882 AND vote.race_id = race.race_id AND vote.choice_id = choice.choice_id
+ORDER BY vote.cvr_id ASC, race.title ASC LIMIT 113;
+
+
+
+SELECT  race.race_id, race.votesAllowed as numV, choice.title
+FROM choice LEFT JOIN race, vote
+ON  vote.cvr_id=176882 AND vote.race_id = race.race_id AND vote.choice_id = choice.choice_id
+ORDER BY vote.cvr_id ASC, race.title ASC LIMIT 113;
+
+
+# votes (for export to CSV)
+SELECT cvr.cvr_id as cid, cvr.precinct_code as pc, ballot_style as ball,
+  choice.title as ct, vote.race_id as rid
+FROM vote, choice, cvr
+WHERE vote.cvr_id = cvr.cvr_id  AND vote.choice_id = choice.choice_id
+ORDER BY vote.cvr_id ASC, vote.race_id ASC
+LIMIT 300;
