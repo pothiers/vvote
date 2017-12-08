@@ -1,7 +1,10 @@
 #! /usr/bin/env python
 """<<Python script callable from command line.  Put description here.>>
+EXAMPLE:
+  lvr2csv --skip 2000  LVR.db lvr.csv
 """
 # Docstrings intended for document generation via pydoc
+
 
 import sys
 import argparse
@@ -14,72 +17,87 @@ import sqlite3
 
 # OUTPUT: CVR_id, Precinct, BallotStyle, (Race *), ...
 def db_to_csv(dbfile, csv_filename, skip=1000):
-        print('''NB: This produces a Sheet that may be very sparse.
+    print('''NB: This produces a Sheet that may be very sparse.
 The format is similar to LVR file from Elections software.
-Writing to file: {} (after every {} records)'''.format(csv_filename, skip))
+Writing to file: {} (progress message after every {} records)'''
+          .format(csv_filename, skip))
               
-        race_sql = '''SELECT race_id as id, votesAllowed as numV, title
-FROM race ORDER BY race_id;'''  
+    race_sql = '''SELECT race_id as id, votesAllowed as numV, title
+FROM race ORDER BY race_id ASC;'''  
 
-        votecvr_sql = '''
+    votecvr_sql = '''
 SELECT cvr.cvr_id as cid, cvr.precinct_code as pc, ballot_style as ball,
-  choice.title as ct, vote.race_id as rid
+    choice.title as ct, vote.race_id as rid
 FROM vote, choice, cvr
 WHERE vote.cvr_id = cvr.cvr_id  AND vote.choice_id = choice.choice_id
-ORDER BY vote.cvr_id ASC, vote.race_id ASC;'''
+ORDER BY   vote.cvr_id ASC, vote.race_id ASC;'''
+    
+    conn = sqlite3.connect(dbfile)
+    cur = conn.cursor()
+    headers = 'Cast Vote Record,Precinct,Ballot Style'.split(',')
+    raceVa = dict() # [id] => [votesAllowed, ...]
+    raceName = dict() # [id] => [title, ...]
+    all_rids = list() # [rid, ...]
+    for (rid,va,title) in cur.execute(race_sql):
+        raceVa[rid] = va
+        raceName[rid] = title
+        all_rids.append(rid) # insertion order
+        headers.extend([title] * va)
+    logging.debug('all_rids={}'.format(all_rids))
+    logging.debug('raceVa={}'.format(raceVa))
+    logging.debug('raceName={}'.format(raceName))
+    
+    with open(csv_filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, dialect='excel')
+        writer.writerow(headers)
 
+        # A CSV row format is: [cvr, [race [choice, ...]]]
+        # But query is essentially: [(cvr_id,race,choice), ...]
+        # Query has gaps where no race (for CVR) or choice (for race).
+        # Handle by aggregating lists with special handling at gaps.
+        # Number of choice columns for a race = raceVa[id] (VotesAllowed)
+        # ASSUME: rids from "all_rids" and "votecvr_sql" are same order
+        prev_cvr_id = None
+        prev_rid = None
+        votes = list()    # [choice_title, ...]
+        cvr_cols = list() 
+        race_ix = -1 # of "all_rids"
+        for (cvr_id,pc,ball,ct,rid) in cur.execute(votecvr_sql):
+            if rid != prev_rid:
+                race_ix += 1
+            logging.debug('DBG: cvr_id={}-{}, rid={}, ix={}'
+                          .format(prev_cvr_id, cvr_id, rid, race_ix ))
+            if cvr_id != prev_cvr_id:     # new ROW (cvr)
+                if (cvr_id % skip) == 0:
+                    print('{}: row votes({})'.format(cvr_id,len(votes)))
+                if len(cvr_cols) > 0:
+                    writer.writerow(cvr_cols + votes)
 
-        conn = sqlite3.connect(dbfile)
-        cur = conn.cursor()
-        headers = 'Cast Vote Record,Precinct,Ballot Style'.split(',')
-        raceVa = dict() # [id] => [votesAllowed, ...]
-        raceName = dict() # [id] => [title, ...]
-        all_races = list() # [rid, ...]
-        for (rid,va,title) in cur.execute(race_sql):
-            raceVa[rid] = va
-            raceName[rid] = title
-            all_races.append(rid) # insertion order
-            headers.extend([title] * va)
-            
-        #logging.debug('raceName dict ({})={}'.format(len(raceName),raceName))
+                # Reset
+                race_ix = 0 # of "all_rids"
+                votes = list()  # choices for this row
+                prev_cvr_id = cvr_id
 
-        with open(csv_filename, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile, dialect='excel')
-            writer.writerow(headers)
+                            
+                
+            cvr_cols=[cvr_id,pc,ball]
+            # insert blank votes for races without data in this CVR
+            while ((race_ix < len(all_rids)) and (rid != all_rids[race_ix])): 
+                prevlen = len(votes)
+                empty_cells = [''] * raceVa[all_rids[race_ix]]
+                votes.extend(empty_cells)
+                logging.debug('_ {},{}-{},{} VOTES: {} +{} = {}'
+                              .format(cvr_id, prev_rid, rid, race_ix,
+                                      prevlen, len(empty_cells), len(votes)))
+                race_ix += 1
 
-            # A CSV row format is: [cvr, [race [choice, ...]]]
-            # But query is essentially: [(cvr_id,race,choice), ...]
-            # Query has gaps where no race (for CVR) or choice (for race).
-            # Handle by aggregating lists with special handling at gaps.
-            # Number of choice columns for a race = raceVa[id] (VotesAllowed)
-            # ASSUME: rids from "all_races" and "votecvr_sql" are same order
-            prev_cvr_id = None
-            votes = list()    # [choice_title, ...]
-            cvr_cols = list() 
-            race_index = 0 # of "all_races"
-            for (cvr_id,pc,ball,ct,rid) in cur.execute(votecvr_sql):
-                if cvr_id != prev_cvr_id:     # new ROW (cvr)
-                    if len(cvr_cols) > 0:
-                        writer.writerow(cvr_cols + votes)
-
-                    if (cvr_id % skip) == 0:
-                        print('{}: row votes({})'.format(cvr_id,len(votes)))
-
-                    # Reset
-                    race_index = 0 # of "all_races"
-                    votes = list()  # choices for this row
-                    prev_cvr_id = cvr_id
-                    # END new ROW
-
-                cvr_cols=[cvr_id,pc,ball]
-                # insert blank votes for races without data in this CVR
-                while ((race_index < len(all_races))
-                       and (rid != all_races[race_index])): 
-                    votes.extend([''] * raceVa[all_races[race_index]])
-                    race_index += 1
-
-                votes.append(ct)
-                # END votecvr_sql
+            #logging.debug('rid({})={}, ct={}'.format(raceVa[rid],rid,ct))
+            prevlen = len(votes)
+            votes.append(ct)
+            logging.debug('* {},{}-{},{} VOTES: {} +{} = {}'
+                          .format(cvr_id, prev_rid, rid, race_ix,
+                                  prevlen,1, len(votes)))
+            prev_rid = rid
 
 
 
