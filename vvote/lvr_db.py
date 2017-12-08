@@ -92,7 +92,7 @@ class LvrDb():
 
             cur.execute('INSERT INTO cvr VALUES (?,?,?)',
                         (cvr_id, precinct, ballot))
-            logging.debug('INSERT cvr: {}'.format(cvr_id))
+            #logging.debug('INSERT cvr: {}'.format(cvr_id))
 
             for c in range(sheet.minDataC, sheet.max_col + 1):
                 race_id = sheet.raceLut[cells[1][c]]
@@ -112,35 +112,108 @@ class LvrDb():
         self.conn.close()
 
     # OUTPUT: CVR_id, Precinct, BallotStyle, (Race *), ...
-#!    def to_csv(self, csv_filename):
-#!        race_sql = '''SELECT race_id as id, votesAllowed as numV, title
-#!FROM race ORDER BY title;'''  
-#!        cvr_sql = '''SELECT 
-#!  cvr_id, 
-#!  precinct_code as precinct, 
-#!  ballot_type as ballot
+    def to_csv(self, csv_filename, skip=1000):
+        print('''
+NB: This produces a Sheet that may be very sparse and VERY SLOW. 
+The format is similar to LVR file from Elections software.
+Writing to file: {} (after every {} records)'''.format(csv_filename, skip))
+              
+        race_sql = '''SELECT race_id as id, votesAllowed as numV, title
+FROM race ORDER BY race_id;'''  
+
+        votecvr_sql = '''
+SELECT cvr.cvr_id as cid, cvr.precinct_code as pc, ballot_style as ball,
+  choice.title as ct, vote.race_id as rid
+FROM vote, choice, cvr
+WHERE vote.cvr_id = cvr.cvr_id  AND vote.choice_id = choice.choice_id
+ORDER BY vote.cvr_id ASC, vote.race_id ASC;'''
+
+#!        cvr_sql = '''SELECT cvr_id, 
+#!        precinct_code as precinct, 
+#! ballot_style as ballot
 #!FROM cvr ORDER BY cvr_id;'''  
-#!        vote_sql = '''SELECT race.votesAllowed as numV, choice.title
-#!FROM choice LEFT JOIN race ON race.race_id = choice.race_id
-#!ORDER BY race.title;'''  
-#!        self.conn = sqlite3.connect(self.dbfile)
-#!        cur = self.conn.cursor()
-#!        headers = 'Cast Vote Record,Precinct,Ballot Style'.split(',')
-#!        race_list = list # [(id, votesAllowed, title), ...]
-#!        for row in cur.execute(race_sql):
-#!            race_list.append((row['id'],row['numV'],row['title']))
-#!            headers.extend([row['title'] * row['numV']])
+#!
+#!        vote_sql = '''SELECT choice.title as ct FROM vote, choice
+#!WHERE vote.cvr_id = ? AND vote.race_id = ? 
+#!  AND vote.choice_id = choice.choice_id;'''
+
+        self.conn = sqlite3.connect(self.dbfile)
+        cur = self.conn.cursor()
+        cur2 = self.conn.cursor()
+        headers = 'Cast Vote Record,Precinct,Ballot Style'.split(',')
+        raceVa = dict() # [id] => [votesAllowed, ...]
+        raceName = dict() # [id] => [title, ...]
+        all_races = list() # [rid, ...]
+        for (rid,va,title) in cur.execute(race_sql):
+            raceVa[rid] = va
+            raceName[rid] = title
+            all_races.append(rid) # insertion order
+            headers.extend([title] * va)
+            
+        logging.debug('raceName dict ({})={}'.format(len(raceName),raceName))
+
+        with open(csv_filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, dialect='excel')
+            writer.writerow(headers)
+
+            # A CSV row format is: [cvr, [race [choice, ...]]]
+            # But query is essentially: [(cvr_id,race,choice), ...]
+            # Query has gaps where no race (for CVR) or choice (for race).
+            # Handle by aggregating lists with special handling at gaps.
+            # Number of choice columns for a race = raceVa[id] (VotesAllowed)
+            # ASSUME: rids from "all_races" and "votecvr_sql" are same order
+            prev_cvr_id = None
+            votes = list()    # [choice_title, ...]
+            cvr_cols = list() 
+            race_index = 0 # of "all_races"
+            for (cvr_id,pc,ball,ct,rid) in cur.execute(votecvr_sql):
+                if cvr_id != prev_cvr_id:     # new ROW (cvr)
+                    if len(cvr_cols) > 0:
+                        writer.writerow(cvr_cols + votes)
+
+                    if (cvr_id % skip) == 0:
+                        print('{}: row votes({})'.format(cvr_id,len(votes)))
+
+                    # Reset
+                    race_index = 0 # of "all_races"
+                    votes = list()  # choices for this row
+                    prev_cvr_id = cvr_id
+                    # END new ROW
+
+                cvr_cols=[cvr_id,pc,ball]
+                # insert blank votes for races without data in this CVR
+                while ((race_index < len(all_races))
+                       and (rid != all_races[race_index])): 
+                    votes.extend([''] * raceVa[all_races[race_index]])
+                    race_index += 1
+
+                votes.append(ct)
+                # END votecvr_sql
+
 #!        with open(csv_filename, 'w', newline='') as csvfile:
 #!            writer = csv.writer(csvfile, dialect='excel')
 #!            writer.writerow(headers)
-#!
-#!            for row in cur.execute(cvr_sql):
-#!                cvr_cols=[row['cvr_id'],row['precinct'],row['ballot']]
+#!            cur.execute(cvr_sql)
+#!            cvr_list = cur.fetchall()
+#!            for (cvr_id,precinct,ballot) in cvr_list:
+#!                if (cvr_id % skip) == 0:
+#!                    print('Processing cvr {}'.format(cvr_id))
+#!                cvr_cols=[cvr_id,precinct,ballot]
+#!                logging.debug('cvr_cols={}'.format(cvr_cols))
 #!                vote_cols = list()
-#!                for row2 in cur.execute(vote_sql):
-#!                    writer.writerow(cvr_cols+vote_cols)
-#!
-            
+#!                for race_id,numV,rt in race_list:
+#!                    race_choices = list()
+#!                    for (choice_title,) in cur2.execute(vote_sql,
+#!                                                        (cvr_id, race_id)):
+#!                        race_choices.append(choice_title)
+#!                    if len(race_choices) == 0:
+#!                        race_choices = [''] * numV
+#!                    vote_cols.extend(race_choices)
+#!                    logging.debug('race_choices={}'.format(race_choices))
+#!                writer.writerow(cvr_cols+vote_cols)
+#!                logging.debug('{}: vote_cols={}'.format(cvr_id, vote_cols))
+
+                
         
 
 ### end LvrDb
@@ -222,6 +295,7 @@ Sheet Summary:
    VoteFor cnts: {}
    Choice cnt:   {}
    choice ids: {} ... {}
+###################################################################
 '''
               .format(self.filename,
                       self.minDataR, self.max_row, 
@@ -278,11 +352,14 @@ def main():
     logging.basicConfig(level=log_level,
                         format='%(levelname)s %(message)s',
                         datefmt='%m-%d %H:%M')
-    logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
+    #!logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
     db = LvrDb(args.database)
     db.insert_from_csv(args.infile)
     print('Inserted data from {} into {}'.format(args.infile, args.database))
+    foo = 'foo-lvr.csv'
+    db.to_csv(foo)
+    print('Created CSV from DB in {}'.format(foo))
     
 if __name__ == '__main__':
     main()
