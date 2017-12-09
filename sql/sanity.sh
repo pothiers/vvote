@@ -72,24 +72,24 @@ WHERE vote.cvr_id=176882
 ORDER BY vote.cvr_id ASC, race.title ASC;
 EOF
 
-# 
-SELECT  race.race_id, race.votesAllowed as numV, choice.title
-FROM choice LEFT JOIN race, vote
-ON  vote.cvr_id=176882 AND vote.race_id = race.race_id AND vote.choice_id = choice.choice_id
-ORDER BY vote.cvr_id ASC, race.title ASC LIMIT 113;
-
-
-
-SELECT  race.race_id, race.votesAllowed as numV, choice.title
-FROM choice LEFT JOIN race, vote
-ON  vote.cvr_id=176882 AND vote.race_id = race.race_id AND vote.choice_id = choice.choice_id
-ORDER BY vote.cvr_id ASC, race.title ASC LIMIT 113;
 
 
 # votes (for export to CSV)
+sqlite3 -header -column LVR.db <<EOF
 SELECT cvr.cvr_id as cid, cvr.precinct_code as pc, ballot_style as ball,
   choice.title as ct, vote.race_id as rid
 FROM vote, choice, cvr
 WHERE vote.cvr_id = cvr.cvr_id  AND vote.choice_id = choice.choice_id
 ORDER BY vote.cvr_id ASC, vote.race_id ASC
 LIMIT 300;
+EOF
+
+# "all possible choices" for each race
+# In this case "possible" means "seen in the data"
+sqlite3 -header -column LVR.db <<EOF
+SELECT DISTINCT race.title AS rt, choice.title AS ct 
+FROM vote,race,choice 
+WHERE vote.race_id = race.race_id AND vote.choice_id = choice.choice_id 
+ORDER BY rt, ct;
+EOF
+

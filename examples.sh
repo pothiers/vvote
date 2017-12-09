@@ -18,8 +18,15 @@ cd ~/sandbox/vvote
 
 ## Sample invocations
 
-lvr $LVR    # => LVR.db
+lvrdb day-1-cvr.csv  # => LVR.db
+lvr2csv LVR.db lvr.csv
+
+
+
+lvr $LVR    
 sovc $SOVC  # => SOVC.db
+
+
 
 # Create mappings for RACE and CHOICE titles (SOVC to LVR)
 genmap -v $data/day1-sovc.xlsx $data/day1-lvr.xlsx rm.csv cm.csv

@@ -92,6 +92,7 @@ setup(
             'sovcdb=vvote.sovc_db:main',
             'lvrdb=vvote.lvr_db:main',
             'lvr2csv=vvote.lvr_db_csv:main',
+            'makemapdb=vvote.mapping_db:main',
             'lvr=vvote.lvr:main',
             'transpose=vvote.transpose:main',
             'genmap=vvote.mapping:main',

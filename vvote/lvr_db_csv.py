@@ -77,8 +77,6 @@ ORDER BY   vote.cvr_id ASC, vote.race_id ASC;'''
                 race_ix = 0 # of "all_rids"
                 votes = list()  # choices for this row
                 prev_cvr_id = cvr_id
-
-                            
                 
             cvr_cols=[cvr_id,pc,ball]
             # insert blank votes for races without data in this CVR
