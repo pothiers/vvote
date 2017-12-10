@@ -16,6 +16,7 @@ import sqlite3
 from collections import defaultdict
 from difflib import SequenceMatcher
 from pprint import pprint
+import copy
 
 ##############################################################################
 ### Database
@@ -168,8 +169,12 @@ def rem_party(name):
 
 # Normalize differentces between LVR and SOVC choices
 # LVR may contain unicode
-def clean_choices(choices):
-    """Normalize list of choices"""
+def clean_choices(lut):
+    """Normalize dict of choices.
+lut[cid] => ctitle
+RETURN: [(cid,title), ...];  Sorted by TITLE.
+"""
+    newlut = copy.copy(lut) # newlut[cid] => title
     nukechars = str.maketrans(dict.fromkeys('()"'))
     repstrs = [
         #LVR        SOVC
@@ -184,12 +189,13 @@ def clean_choices(choices):
         ('Write-in', 'WRITE-IN'),
     ]
 
-    choices = [rem_party(c) for c in choices]
-    choices = [c.translate(nukechars) for c in choices]
-    for (a,b) in repstrs: 
-        choices = [c.replace(a,b) for c in choices]
-    return sorted(choices)
-    
+    for k in lut.keys():
+        newlut[k] = rem_party(newlut[k])
+        newlut[k] = newlut[k].translate(nukechars)
+        for (a,b) in repstrs:
+            newlut[k] = newlut[k].replace(a,b)
+    return sorted(newlut.items(), key=lambda x: x[1])
+
 def calc(mapdb):
     con = sqlite3.connect(mapdb)
     sql_tpl = '''SELECT 
@@ -215,7 +221,8 @@ WHERE {src}_rc.race_id = rid AND {src}_rc.choice_id = cid;'''
     for rid,rt in sorted(sr_lut.items(), key=lambda x: x[1]):
         sovc_lut[rt] = [sc_lut[cid] for cid in src_lut[rid]]
 
-    # Compare Races of LVR,SOVC
+    ##########################################################
+    ### Compare Races of LVR,SOVC
     iti = sorted(lvr_lut.keys())
     jti = sorted(sovc_lut.keys())
     s = SequenceMatcher(None, iti, jti)
@@ -232,22 +239,34 @@ WHERE {src}_rc.race_id = rid AND {src}_rc.choice_id = cid;'''
             logging.warning('NOT creating LVR--SOVC race-map for: ({}) {}--{}'
                             .format(tag, iti[i1:i2], jti[j1:j2]))
 
-    # Compare Choices of LVR,SOVC (single Choice list for each over ALL races)
-    iti = clean_choices(lc_lut.values())
-    jti = clean_choices(sc_lut.values())
+    ##########################################################
+    ### Compare Choices of LVR,SOVC (single Choice list for each over ALL races)
+    # create cleaned CID-list, CTitle-list (for LVR and SOVC)
+    iid,iti = zip(*clean_choices(lc_lut))
+    jid,jti = zip(*clean_choices(sc_lut))
     s = SequenceMatcher(None, iti, jti)
-    #!pprint(('LVR  choices: ',iti))
-    #!pprint(('SOVC choices: ',jti))
-    #!pprint(s.get_opcodes())
+    #! pprint(('LVR  choices: ',iti))
+    #! pprint(('SOVC choices: ',jti))
+    #! pprint(s.get_opcodes())
     con.execute('DELETE from choice_map;')
     for (tag, i1, i2, j1, j2) in s.get_opcodes():
-        # ignore DELETE, INSERT, REPLACE cases.
-        if tag in ['equal',]:
+        # Possible tags: equal, delete, insert, replace 
+        if tag == 'equal':
             assert i2-i1 == j2-j1, ('{} i2-i1 <> j2-j1 ({}-{}) <> ({}-{})'
                                     .format(tag,i2,i1,j2,j1))
             for offset in range(i2-i1):
+                # Insert ORIGINAL titles into map (using offset in CID list)
                 con.execute('INSERT INTO choice_map VALUES (?,?)',
-                            (iti[i1+offset], jti[j1+offset]))
+                            (lc_lut[iid[i1+offset]],
+                             sc_lut[jid[j1+offset]]))
+        elif tag == 'replace':
+            logging.warning('NOT creating LVR--SOVC choice-map for: ({}) {}--{}'
+                            .format(tag, iti[i1:i2], jti[j1:j2]))
+            print('RECOMMENDATION: Insert mappings for Choice(s)?')
+            for offset in range(i2-i1):
+                print("SQL: INSERT INTO choice_map VALUES ('{}','{}')"
+                      .format(lc_lut[iid[i1+offset]],
+                              sc_lut[jid[j1+offset]]))
         else:
             logging.warning('NOT creating LVR--SOVC choice-map for: ({}) {}--{}'
                             .format(tag, iti[i1:i2], jti[j1:j2]))
