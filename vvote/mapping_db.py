@@ -196,7 +196,7 @@ RETURN: [(cid,title), ...];  Sorted by TITLE.
             newlut[k] = newlut[k].replace(a,b)
     return sorted(newlut.items(), key=lambda x: x[1])
 
-def calc(mapdb):
+def calc(mapdb, acceptAllReplacement=True):
     con = sqlite3.connect(mapdb)
     sql_tpl = '''SELECT 
   {src}_race.race_id     as rid,
@@ -260,13 +260,23 @@ WHERE {src}_rc.race_id = rid AND {src}_rc.choice_id = cid;'''
                             (lc_lut[iid[i1+offset]],
                              sc_lut[jid[j1+offset]]))
         elif tag == 'replace':
-            logging.warning('NOT creating LVR--SOVC choice-map for: ({}) {}--{}'
-                            .format(tag, iti[i1:i2], jti[j1:j2]))
-            print('RECOMMENDATION: Insert mappings for Choice(s)?')
-            for offset in range(i2-i1):
-                print("SQL: INSERT INTO choice_map VALUES ('{}','{}')"
-                      .format(lc_lut[iid[i1+offset]],
-                              sc_lut[jid[j1+offset]]))
+            logging.warning(
+                'Automatically creating LVR--SOVC choice-map for: ({}) {}--{}'
+                .format(tag, iti[i1:i2], jti[j1:j2]))
+            if acceptAllReplacement:
+                for offset in range(i2-i1):
+                    con.execute('INSERT INTO choice_map VALUES (?,?)',
+                                (lc_lut[iid[i1+offset]],
+                                 sc_lut[jid[j1+offset]]))
+            else:
+                logging.warning(
+                    'NOT creating LVR--SOVC choice-map for: ({}) {}--{}'
+                    .format(tag, iti[i1:i2], jti[j1:j2]))
+                print('RECOMMENDATION: Insert mappings for Choice(s)?')
+                for offset in range(i2-i1):
+                    print("SQL: INSERT INTO choice_map VALUES ('{}','{}')"
+                          .format(lc_lut[iid[i1+offset]],
+                                  sc_lut[jid[j1+offset]]))
         else:
             logging.warning('NOT creating LVR--SOVC choice-map for: ({}) {}--{}'
                             .format(tag, iti[i1:i2], jti[j1:j2]))

@@ -18,10 +18,21 @@ cd ~/sandbox/vvote
 
 ## Sample invocations
 
+
+# INGEST LVR
 lvrdb day-1-cvr.csv  # => LVR.db
-lvr2csv LVR.db lvr.csv
+# lvr2csv LVR.db lvr.csv
 
+# INGEST SOVC
+lvrdb G2016_EXPORT1.csv  # => SOVC.db
 
+# create MAP db
+makemapdb -l LVR.db -s SOVC.db
+
+# Generate mappings between LVR and SOVC
+makemapdb --calc
+
+##############################################################################
 
 lvr $LVR    
 sovc $SOVC  # => SOVC.db
