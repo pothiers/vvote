@@ -21,34 +21,12 @@ import sqlite3
 from collections import defaultdict
 import pprint
 
+from . import sql
+
 ##############################################################################
 ### Database
 ###
 
-lvr_schema = '''
-CREATE TABLE source (
-   filename text
-);
-CREATE TABLE race (
-   race_id integer primary key,
-   votesAllowed integer,
-   title text
-);
-CREATE TABLE choice (
-   choice_id integer primary key,
-   title text
-);
-CREATE TABLE cvr (
-   cvr_id integer primary key,
-   precinct_code,
-   ballot_style text
-);
-CREATE TABLE vote (
-   cvr_id integer,
-   race_id integer,
-   choice_id integer
-);
-'''
 
 class LvrDb():
     """Manage LVR Database (sqlite3 format)"""
@@ -68,7 +46,7 @@ class LvrDb():
 
         self.conn = sqlite3.connect(dbfile)
         cur = self.conn.cursor()
-        cur.executescript(lvr_schema)
+        cur.executescript(sql.lvr_schema)
 
     def insert_from_csv(self,csvfile):
         """Append to existing Sqlite DB."""
@@ -111,8 +89,21 @@ class LvrDb():
         self.conn.commit()
         self.conn.close()
 
-
-                
+    def tally(self, dbfile, compare=True):
+        """Count votes from ballots (LVR file). Create content similar enough
+to SOVC that the two can be compared."""
+        con = sqlite3.connect(dbfile)
+        raceLut = dict() # lut[rid] => title
+        for rid,rt in con.execute(sql.lvr_race):
+            raceLut[rid] = rt
+            
+        choiceLut = dict() # lut[cid] => title
+        for cid,ct in con.execute(sql.lvr_choice):
+            choiceLut[cid] = ct
+        pccount = defaultdict(int) # pccount[(pc,rid,cid)] => numVotes
+        for (rid,cid,pc) in con.execute(sql.lvr_vote):
+            pccount[(pc,rid,cid)] += 1
+        pprint.pprint(pccount)
         
 
 ### end LvrDb

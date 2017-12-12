@@ -18,78 +18,27 @@ from difflib import SequenceMatcher
 from pprint import pprint
 import copy
 
+from . import sql
+
 ##############################################################################
 ### Database
 ###
-
-map_schema = '''
-CREATE TABLE source (
-   map_filename text,
-   lvr_filename text,
-   sovc_filename text
-);
-
--- LVR
-CREATE TABLE lvr_race (
-   race_id integer primary key,
-   title text
-);
-CREATE TABLE lvr_choice (
-   choice_id integer primary key,
-   title text
-);
-CREATE TABLE lvr_rc (
-   race_id integer,
-   choice_id integer
-);
-
--- SOVC
-CREATE TABLE sovc_race (
-   race_id integer primary key,
-   title text
-);
-CREATE TABLE sovc_choice (
-   choice_id integer primary key,
-   title text
-);
-CREATE TABLE SOVC_rc (
-   race_id integer,
-   choice_id integer
-);
-
--- MAP
-CREATE TABLE race_map (
-   lvr_race_title text,
-   sovc_race_title text
-);
-CREATE TABLE choice_map (
-   lvr_choice_title text,
-   sovc_choice_title text
-);'''
 
 
 def gen_mapping(lvrdb, sovcdb, mapdb):
     if os.path.exists(mapdb):
         os.remove(mapdb)
     conmap = sqlite3.connect(mapdb)
-    conmap.executescript(map_schema)
+    conmap.executescript(sql.map_schema)
     conmap.execute('INSERT INTO source VALUES (?,?,?)',
                    (mapdb, lvrdb, sovcdb))
 
     # LVR: Insert Race,Choice info 
     conlvr = sqlite3.connect(lvrdb)
-    lvr_rc_sql = '''SELECT DISTINCT 
-  race.title AS rt, 
-  race.race_id AS rid, 
-  choice.title AS ct,
-  choice.choice_id AS cid
-FROM vote,race,choice 
-WHERE vote.race_id = race.race_id AND vote.choice_id = choice.choice_id 
-ORDER BY rt, ct;'''
     lrc_lut = defaultdict(list) # lut[rid] => [cid, ...]
     lr_lut = dict() # lut[id] => title
     lc_lut = dict() # lut[id] => title
-    for (rt,rid,ct,cid) in conlvr.execute(lvr_rc_sql):
+    for (rt,rid,ct,cid) in conlvr.execute(sql.map_lvr_rc):
         lrc_lut[rid].append(cid)
         lr_lut[rid] = rt
         lc_lut[cid] = ct
@@ -103,18 +52,10 @@ ORDER BY rt, ct;'''
 
     # SOVC: Insert Race,Choice info 
     consovc = sqlite3.connect(sovcdb)
-    sovc_rc_sql = '''SELECT DISTINCT 
-  race.title AS rt, 
-  race.race_id AS rid, 
-  choice.title AS ct,
-  choice.choice_id AS cid 
-FROM precinct,race,choice 
-WHERE precinct.race_id = race.race_id AND precinct.choice_id = choice.choice_id 
-ORDER BY rt, ct;'''
     src_lut = defaultdict(list) # rc[rid] => [cid, ...]
     sr_lut = dict() # lut[id] => title
     sc_lut = dict() # lut[id] => title
-    for (rt,rid,ct,cid) in consovc.execute(sovc_rc_sql):
+    for (rt,rid,ct,cid) in consovc.execute(sql.map_sovc_rc):
         src_lut[rid].append(cid)
         sr_lut[rid] = rt
         sc_lut[cid] = ct
@@ -182,7 +123,8 @@ RETURN: [(cid,title), ...];  Sorted by TITLE.
         ('Í',        'I'),
         ('Ó',        'O'),
         ('Ú',        'U'),
-        ('undervote', 'UNDER VOTES'),
+        ('overvote', 'OVER VOTES'),
+        ('undervote','UNDER VOTES'),
         ('YES/SÍ',   'YES'),
         ('YES/Sí',   'YES'),
         ('YES/SI',   'YES'),
@@ -198,15 +140,8 @@ RETURN: [(cid,title), ...];  Sorted by TITLE.
 
 def calc(mapdb, acceptAllReplacement=True):
     con = sqlite3.connect(mapdb)
-    sql_tpl = '''SELECT 
-  {src}_race.race_id     as rid,
-  {src}_race.title       as rti,
-  {src}_choice.choice_id as cid,
-  {src}_choice.title     as cti
-FROM {src}_race, {src}_choice, {src}_rc
-WHERE {src}_rc.race_id = rid AND {src}_rc.choice_id = cid;'''
-    sql_lvr = sql_tpl.format(src='lvr')
-    sql_sovc = sql_tpl.format(src='sovc')
+    sql_lvr = sql.map_tpl.format(src='lvr')
+    sql_sovc = sql.map_tpl.format(src='sovc')
 
     # Extract LUTS from DB (for LVR and SOVC)
     #   r_lut[rid] => rti, c_lut[cid] => cti, rc_lut[rid] => [cid, ...]
@@ -236,8 +171,8 @@ WHERE {src}_rc.race_id = rid AND {src}_rc.choice_id = cid;'''
                 con.execute('INSERT INTO race_map VALUES (?,?)',
                             (iti[i1+offset], jti[j1+offset]))
         else:
-            logging.warning('NOT creating LVR--SOVC race-map for: ({}) {}--{}'
-                            .format(tag, iti[i1:i2], jti[j1:j2]))
+            print('\nNOT creating LVR--SOVC race-map for: ({}) {}--{}'
+                  .format(tag, iti[i1:i2], jti[j1:j2]))
 
     ##########################################################
     ### Compare Choices of LVR,SOVC (single Choice list for each over ALL races)
@@ -250,9 +185,11 @@ WHERE {src}_rc.race_id = rid AND {src}_rc.choice_id = cid;'''
     #! pprint(s.get_opcodes())
     con.execute('DELETE from choice_map;')
     for (tag, i1, i2, j1, j2) in s.get_opcodes():
-        # Possible tags: equal, delete, insert, replace 
+        # Possible tags: equal, delete, insert, replace
+        ispan = i2-i1
+        jspan = j2-j1
         if tag == 'equal':
-            assert i2-i1 == j2-j1, ('{} i2-i1 <> j2-j1 ({}-{}) <> ({}-{})'
+            assert ispan == jspan, ('{} i2-i1 <> j2-j1 ({}-{}) <> ({}-{})'
                                     .format(tag,i2,i1,j2,j1))
             for offset in range(i2-i1):
                 # Insert ORIGINAL titles into map (using offset in CID list)
@@ -260,27 +197,36 @@ WHERE {src}_rc.race_id = rid AND {src}_rc.choice_id = cid;'''
                             (lc_lut[iid[i1+offset]],
                              sc_lut[jid[j1+offset]]))
         elif tag == 'replace':
-            logging.warning(
-                'Automatically creating LVR--SOVC choice-map for: ({}) {}--{}'
-                .format(tag, iti[i1:i2], jti[j1:j2]))
-            if acceptAllReplacement:
-                for offset in range(i2-i1):
+            if acceptAllReplacement and (ispan == jspan):
+                print('\nAUTO create LVR--SOVC choice-map for: ({}) {}--{}'
+                      .format(tag, iti[i1:i2], jti[j1:j2]))
+                for offset in range(ispan):
                     con.execute('INSERT INTO choice_map VALUES (?,?)',
                                 (lc_lut[iid[i1+offset]],
                                  sc_lut[jid[j1+offset]]))
             else:
-                logging.warning(
-                    'NOT creating LVR--SOVC choice-map for: ({}) {}--{}'
-                    .format(tag, iti[i1:i2], jti[j1:j2]))
-                print('RECOMMENDATION: Insert mappings for Choice(s)?')
-                for offset in range(i2-i1):
-                    print("SQL: INSERT INTO choice_map VALUES ('{}','{}')"
+                print('\nWARNING: '
+                      'NOT creating LVR--SOVC choice-map for: {} {}({})--{}({})'
+                      .format(tag,
+                              iti[i1:i2],  ispan,
+                              jti[j1:j2],  jspan))
+                print('CONSIDER: Insert mappings for Choice(s)?')
+                for offset in range(ispan):
+                    print("  SQL: INSERT INTO choice_map VALUES ('{}','{}')"
                           .format(lc_lut[iid[i1+offset]],
                                   sc_lut[jid[j1+offset]]))
         else:
-            logging.warning('NOT creating LVR--SOVC choice-map for: ({}) {}--{}'
-                            .format(tag, iti[i1:i2], jti[j1:j2]))
-
+            print('\nWARNING: '
+                  'NOT creating LVR--SOVC choice-map for: ({}) {}({})--{}({})'
+                  .format(tag,
+                          iti[i1:i2],  ispan,
+                          jti[j1:j2],  jspan))
+    print('\n\n###################################')
+    print('Mapping can be added with sqlite. e.g.')
+    print('  sqlite3 {} "INSERT INTO choice_map VALUES (\'LVRstr\',\'SOVCstr\')'
+          .format(mapdb))
+    print('  sqlite3 {} "INSERT INTO race_map VALUES (\'LVRstr\',\'SOVCstr\')'
+          .format(mapdb))
     # All done
     con.commit()
     con.close()

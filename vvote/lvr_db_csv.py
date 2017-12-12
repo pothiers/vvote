@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-"""<<Python script callable from command line.  Put description here.>>
+"""Output LVR db as CSV (in Election System format)
 EXAMPLE:
   lvr2csv --skip 2000  LVR.db lvr.csv
 """

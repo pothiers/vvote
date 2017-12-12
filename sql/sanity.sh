@@ -93,3 +93,24 @@ WHERE vote.race_id = race.race_id AND vote.choice_id = choice.choice_id
 ORDER BY rt, ct;
 EOF
 
+# Count votes from LVR per (precinct,Race,Choice). Raw data for SOVC
+sqlite3 -header -csv LVR.db > lvr.votes.csv <<EOF
+SELECT cvr.precinct_code as pc, race.title as rt, choice.title as ct,
+  count(vote.cvr_id) as votes
+FROM vote, cvr, race, choice
+WHERE vote.cvr_id = cvr.cvr_id 
+  AND vote.race_id = race.race_id
+  AND vote.choice_id = choice.choice_id
+GROUP BY pc, rid, cid
+ORDER BY pc, rid, cid;
+EOF
+
+# Emit votes from SOVC
+sqlite3 -header -csv SOVC.db >sovc.votes.csv <<EOF
+SELECT vote.precinct_code as pc, race.title as rt, choice.title as ct,
+  vote.count as votes
+FROM vote, choice, race
+WHERE vote.choice_id = choice.choice_id AND choice.race_id = race.race_id
+GROUP BY pc, rt, ct
+ORDER BY pc, rt, ct;
+EOF

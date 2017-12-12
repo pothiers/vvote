@@ -21,41 +21,11 @@ import sqlite3
 from collections import defaultdict
 import pprint
 
+from . import sql
+
 ##############################################################################
 ### Database
 ###
-
-sovc_schema = '''
-CREATE TABLE source (
-   filename text
-);
-CREATE TABLE race (
-   race_id integer primary key,
-   title text,
-   num_to_vote_for integer
-);
-CREATE TABLE choice (
-   choice_id integer primary key,
-   title text,
-   race_id integer,
-   party text
-);
-CREATE TABLE precinct (
-  race_id integer,
-  choice_id integer,
-  county_number,
-  precinct_code,  -- id
-  precinct_name,
-  registered_voters integer,
-  ballots_cast_total integer,
-  ballots_cast_blank integer
-);
-CREATE TABLE vote (
-  choice_id integer,
-  precinct_code,
-  count integer
-);
-'''
 
 class SovcDb():
     """Manage SOVC Database (sqlite3 format)"""
@@ -73,7 +43,7 @@ class SovcDb():
         # create new file
         self.conn = sqlite3.connect(dbfile)
         cur = self.conn.cursor()
-        cur.executescript(sovc_schema)
+        cur.executescript(sql.sovc_schema)
         cur.execute('INSERT INTO source VALUES (?)', (sourcefile,))
 
     def insert_race_list(self, race_list):
@@ -117,35 +87,9 @@ class SovcDb():
     def to_csv(self,csv_filename):
         self.conn = sqlite3.connect(self.dbfile)
         cur = self.conn.cursor()
-        
-        choice_sql = '''SELECT 
-  race.title AS rt,   
-  race.num_to_vote_for as nv,
-  choice.title AS ct,  
-  choice.choice_id as cid
-FROM choice, race
-WHERE race.race_id = choice.race_id 
-ORDER BY race_id ASC, choice_id ASC;'''
-
-        sql_precinct = '''SELECT 
-  precinct.county_number AS county,
-  precinct.precinct_code AS pcode,
-  precinct.precinct_name AS pname,
-  precinct.registered_voters AS totvot,
-  precinct.ballots_cast_total AS totbal,
-  precinct.ballots_cast_blank AS blankbal,
-FROM precinct 
-ORDER BY precinct.county_number ASC, pcode ASC;'''
-
-        sql_race = '''SELECT vote.count AS count
-FROM vote, precinct
-WHERE vote.precinct_code = precinct.precinct_code
-ORDER BY race_id
-;
-'''
 
         rc_list = [(row['rt'], row['ct'], row['cid'])
-                   for row in cur.execute(choice_sql)]
+                   for row in cur.execute(sql.sovc_choice)]
         headers1 = ('COUNTY NUMBER,PRECINCT CODE,PRECINCT NAME,'
                     'REGISTERED VOTERS - TOTAL,BALLOTS CAST - TOTAL,'
                     'BALLOTS CAST - BLANK').split(',')
@@ -165,11 +109,11 @@ ORDER BY race_id
             # loop over:
             #   Precinct (by County/Precinct),
             #   Race+Choice (by Race/Choice
-            for row in cur.execute(sql_precinct):
+            for row in cur.execute(sql.sovc_precinct):
                 c6 = [row['county'], row['pcode'], row['pname'],
                       row['totvot'], row['totbal'],row['blankbal']]
                 votes_list = list()
-                for row in cur.execute(sql_race): # for one precinct
+                for row in cur.execute(sql.sovc_race): # for one precinct
                     votes_list.append(row['count'])
                 writer.writerow(c6 + votes_list)
             

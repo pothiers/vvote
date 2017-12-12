@@ -18,13 +18,15 @@ cd ~/sandbox/vvote
 
 ## Sample invocations
 
+xlsx2csv /data/vvote/Elections/G2016/G2016_EXPORT9\ Final.xlsx > export9.sovc.csv
+xlsx2csv /data/vvote/Elections/G2016/Day\ 9\ Final\ CVR\ No\ Images\ -\ Combined.xlsx > day9.lvr.csv
 
 # INGEST LVR
 lvrdb day-1-cvr.csv  # => LVR.db
 # lvr2csv LVR.db lvr.csv
 
 # INGEST SOVC
-lvrdb G2016_EXPORT1.csv  # => SOVC.db
+sovcdb G2016_EXPORT1.csv  # => SOVC.db
 
 # create MAP db
 makemapdb -l LVR.db -s SOVC.db
