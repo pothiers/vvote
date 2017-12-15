@@ -17,6 +17,7 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 from pprint import pprint
 import copy
+import csv
 
 from . import sql
 
@@ -108,6 +109,21 @@ def rem_party(name):
     else:
         return name
 
+
+
+# Normalize differentces between LVR and SOVC choices
+# LVR may contain unicode
+def clean_races(lut):
+    """Normalize dict of races.
+lut[rid] => rtitle
+RETURN: [(rid,rtitle), ...];  Sorted by TITLE.
+"""
+    newlut = copy.copy(lut) # newlut[cid] => title
+
+    # (no change)
+
+    return sorted(newlut.items(), key=lambda x: x[1])    
+
 # Normalize differentces between LVR and SOVC choices
 # LVR may contain unicode
 def clean_choices(lut):
@@ -116,6 +132,7 @@ lut[cid] => ctitle
 RETURN: [(cid,title), ...];  Sorted by TITLE.
 """
     newlut = copy.copy(lut) # newlut[cid] => title
+    # remove chars: parens, double-quotes
     nukechars = str.maketrans(dict.fromkeys('()"'))
     repstrs = [
         #LVR        SOVC
@@ -138,7 +155,7 @@ RETURN: [(cid,title), ...];  Sorted by TITLE.
             newlut[k] = newlut[k].replace(a,b)
     return sorted(newlut.items(), key=lambda x: x[1])
 
-def calc(mapdb, acceptAllReplacement=True):
+def calc(mapdb):
     con = sqlite3.connect(mapdb)
     sql_lvr = sql.map_tpl.format(src='lvr')
     sql_sovc = sql.map_tpl.format(src='sovc')
@@ -158,21 +175,39 @@ def calc(mapdb, acceptAllReplacement=True):
 
     ##########################################################
     ### Compare Races of LVR,SOVC
-    iti = sorted(lvr_lut.keys())
-    jti = sorted(sovc_lut.keys())
+    #! iti = sorted(lvr_lut.keys())
+    #! jti = sorted(sovc_lut.keys())
+    iid,iti = zip(*clean_races(lr_lut))
+    jid,jti = zip(*clean_races(sr_lut))
+
     s = SequenceMatcher(None, iti, jti)
     con.execute('DELETE from race_map;')
     for (tag, i1, i2, j1, j2) in s.get_opcodes():
-        # ignore DELETE, INSERT cases.
+        # Possible tags: equal, delete, insert, replace
+        ispan = i2-i1
+        jspan = j2-j1
         if tag in ['equal', 'replace']:
             assert i2-i1 == j2-j1, ('{} i2-i1 <> j2-j1 ({}-{}) <> ({}-{})'
                                     .format(tag,i2,i1,j2,j1))
             for offset in range(i2-i1):
-                con.execute('INSERT INTO race_map VALUES (?,?)',
-                            (iti[i1+offset], jti[j1+offset]))
-        else:
-            print('\nNOT creating LVR--SOVC race-map for: ({}) {}--{}'
-                  .format(tag, iti[i1:i2], jti[j1:j2]))
+                conf=similar(iti[i1+offset], jti[j1+offset])
+                con.execute('INSERT INTO race_map VALUES (?,?,?,?,?)',
+                            (conf,
+                             iid[i1+offset], lr_lut[iid[i1+offset]],
+                             iid[i1+offset], sr_lut[jid[j1+offset]]))
+        elif (tag == 'delete'): # No SOVC, add to LVR
+            for offset in range(ispan):
+                con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?)',
+                            (0,
+                             iid[i1+offset], lr_lut[iid[i1+offset]],
+                             -1, ''))
+        elif (tag == 'insert'): # No LVR, add to SOVC
+            for offset in range(jspan):
+                con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?)',
+                            (0,
+                             -1, '',
+                             jid[j1+offset], sr_lut[jid[j1+offset]]))
+
 
     ##########################################################
     ### Compare Choices of LVR,SOVC (single Choice list for each over ALL races)
@@ -188,50 +223,68 @@ def calc(mapdb, acceptAllReplacement=True):
         # Possible tags: equal, delete, insert, replace
         ispan = i2-i1
         jspan = j2-j1
-        if tag == 'equal':
-            assert ispan == jspan, ('{} i2-i1 <> j2-j1 ({}-{}) <> ({}-{})'
-                                    .format(tag,i2,i1,j2,j1))
-            for offset in range(i2-i1):
-                # Insert ORIGINAL titles into map (using offset in CID list)
-                con.execute('INSERT INTO choice_map VALUES (?,?)',
-                            (lc_lut[iid[i1+offset]],
-                             sc_lut[jid[j1+offset]]))
-        elif tag == 'replace':
-            if acceptAllReplacement and (ispan == jspan):
-                print('\nAUTO create LVR--SOVC choice-map for: ({}) {}--{}'
-                      .format(tag, iti[i1:i2], jti[j1:j2]))
+        if tag in ['equal', 'replace']:
+            if (ispan == jspan):
                 for offset in range(ispan):
-                    con.execute('INSERT INTO choice_map VALUES (?,?)',
-                                (lc_lut[iid[i1+offset]],
-                                 sc_lut[jid[j1+offset]]))
+                    # Insert ORIGINAL titles into map (using offset in CID list)
+                    conf=similar(iti[i1+offset], jti[j1+offset])
+                    con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?)',
+                                (conf,
+                                 iid[i1+offset], lc_lut[iid[i1+offset]],
+                                 jid[j1+offset], sc_lut[jid[j1+offset]]))
             else:
-                print('\nWARNING: '
-                      'NOT creating LVR--SOVC choice-map for: {} {}({})--{}({})'
-                      .format(tag,
-                              iti[i1:i2],  ispan,
-                              jti[j1:j2],  jspan))
-                print('CONSIDER: Insert mappings for Choice(s)?')
+                # There are diff numbers of titles in LVR and SOVC.
+                # Insert each separately.
                 for offset in range(ispan):
-                    print("  SQL: INSERT INTO choice_map VALUES ('{}','{}')"
-                          .format(lc_lut[iid[i1+offset]],
-                                  sc_lut[jid[j1+offset]]))
-        else:
-            print('\nWARNING: '
-                  'NOT creating LVR--SOVC choice-map for: ({}) {}({})--{}({})'
-                  .format(tag,
-                          iti[i1:i2],  ispan,
-                          jti[j1:j2],  jspan))
-    print('\n\n###################################')
-    print('Mapping can be added with sqlite. e.g.')
-    print('  sqlite3 {} "INSERT INTO choice_map VALUES (\'LVRstr\',\'SOVCstr\')'
-          .format(mapdb))
-    print('  sqlite3 {} "INSERT INTO race_map VALUES (\'LVRstr\',\'SOVCstr\')'
-          .format(mapdb))
+                    con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?)',
+                                (0,
+                                 iid[i1+offset], lc_lut[iid[i1+offset]],
+                                 -1, ''))
+                for offset in range(jspan):
+                    con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?)',
+                                (0,
+                                 -1, '',
+                                 jid[j1+offset], sc_lut[jid[j1+offset]]))
+
+        elif (tag == 'delete'): # No SOVC, add to LVR
+            for offset in range(ispan):
+                con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?)',
+                            (0,
+                             iid[i1+offset], lc_lut[iid[i1+offset]],
+                             -1, ''))
+        elif (tag == 'insert'): # No LVR, add to SOVC
+            for offset in range(jspan):
+                con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?)',
+                            (0,
+                             -1, '',
+                             jid[j1+offset], sc_lut[jid[j1+offset]]))
     # All done
     con.commit()
     con.close()
     return (lvr_lut, sovc_lut)
 
+def similar(lvr,sovc):
+    "Symetric similarity [0,1].  1.0 for identical."
+    return SequenceMatcher(a=lvr, b=sovc).ratio()
+
+
+def export(mapdb, racemap_csv='RACEMAP.csv', choicemap_csv='CHOICEMAP.csv' ):
+    con = sqlite3.connect(mapdb)
+    headers = 'Conf,LId,LTitle,SId,Stitle'.split(',')
+    with open(racemap_csv, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, dialect='excel')
+        writer.writerow(headers)
+        for (conf,lid,lti,sid,sti) in con.execute(sql.race_map):
+            writer.writerow([conf,lid,lti,sid,sti])
+
+    with open(choicemap_csv, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, dialect='excel')
+        writer.writerow(headers)
+        for (conf,lid,lti,sid,sti) in con.execute(sql.choice_map):
+            writer.writerow([conf,lid,lti,sid,sti])
+    print('Wrote racemap: {}, choicemap: {}'.format(racemap_csv, choicemap_csv))
+          
+              
 
 ##############################################################################
 
@@ -258,6 +311,8 @@ def main():
                         help='Calculating mapping (and store in db)')
     parser.add_argument('--pretty', '-p', action='store_true',
                         help='Pretty-print mapping')
+    parser.add_argument('--export', '-e', action='store_true',
+                        help='Export mapping suitable for editing')
     
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
@@ -292,6 +347,8 @@ def main():
     if args.pretty:
         print('Printing current mapping')
         printmap()
+    if args.export:
+        export(args.mapdb)
         
 if __name__ == '__main__':
     main()
