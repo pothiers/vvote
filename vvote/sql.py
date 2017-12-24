@@ -12,7 +12,8 @@ CREATE TABLE race (
 );
 CREATE TABLE choice (
    choice_id integer primary key,
-   title text
+   title text,
+   race_id integer
 );
 CREATE TABLE cvr (
    cvr_id integer primary key,
@@ -21,19 +22,26 @@ CREATE TABLE cvr (
 );
 CREATE TABLE vote (
    cvr_id integer,
-   race_id integer,
+   -- race_id integer,
    choice_id integer
 );
 '''
 
 ###################
-lvr_choice = 'SELECT choice.choice_id, choice.title FROM choice;'
+lvr_choice = 'SELECT choice.choice_id, choice.title, choice_race+id FROM choice;'
 lvr_race = 'SELECT race.race_id, race.title FROM race;'
+lvr_choices = '''SELECT 
+  choice.race_id,
+  race.title,
+  choice.choice_id, 
+  choice.title
+FROM choice, race
+WHERE race.race_id = choice.race_id;'''
 
 ###################
 # Votes
 lvr_vote = '''SELECT  
-  vote.race_id as rid, 
+  -- vote.race_id as rid, 
   vote.choice_id as cid, 
   cvr.precinct_code as pc
 FROM vote, cvr WHERE vote.cvr_id = cvr.cvr_id
@@ -48,7 +56,7 @@ SELECT
   count(vote.cvr_id) as votes
 FROM vote, cvr, race, choice, db2.choice_map, db2.race_map
 WHERE vote.cvr_id = cvr.cvr_id 
-  AND vote.race_id = race.race_id
+  AND choice.race_id = race.race_id
   AND vote.choice_id = choice.choice_id
   AND db2.choice_map.lvr_choice_title = choice.title
   AND db2.race_map.lvr_race_title = race.title
@@ -66,7 +74,7 @@ SELECT
   count(vote.choice_id) as votes
 FROM vote, race, choice, db2.choice_map, db2.race_map
 WHERE 
-  vote.race_id = race.race_id
+  choice.race_id = race.race_id
   AND vote.choice_id = choice.choice_id
   AND db2.choice_map.lvr_choice_title = choice.title
   AND db2.race_map.lvr_race_title = race.title
@@ -112,6 +120,14 @@ CREATE TABLE vote (
 '''
 
 ###################
+sovc_choices = '''SELECT 
+  choice.race_id,
+  race.title,
+  choice.choice_id, 
+  choice.title
+FROM choice, race
+WHERE race.race_id = choice.race_id;'''
+
 sovc_choice = '''SELECT 
   race.title AS rt,   
   race.num_to_vote_for as nv,
@@ -171,6 +187,7 @@ ORDER BY CAST(pc AS INTEGER), rt, ct;'''
 ###
 map_schema = '''
 CREATE TABLE source (
+   sid integer primary key,  -- always == 1
    map_filename text,
    lvr_filename text,
    sovc_filename text
@@ -233,6 +250,8 @@ choice_map = '''SELECT
    sovc_choice_id AS sid,
    sovc_choice_title AS sti
 FROM choice_map ORDER BY lti;'''
+# lvr_race as lrt,
+# sovc_race as srt,
 
 
 map_lvr_rc = '''SELECT DISTINCT 

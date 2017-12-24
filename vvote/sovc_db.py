@@ -22,6 +22,7 @@ from collections import defaultdict
 import pprint
 
 from . import sql
+from .sovc_sheet import SovcSheet
 
 ##############################################################################
 ### Database
@@ -29,23 +30,78 @@ from . import sql
 
 class SovcDb():
     """Manage SOVC Database (sqlite3 format)"""
-    def __init__(self, dbfile, sourcesheet):
-        self.sourcesheet = sourcesheet
+    def __init__(self, dbfile):
         self.dbfile = dbfile
-        self.new_db(dbfile, sourcesheet.filename)
+        self.source = None
+        self.conn = None
+        self.sourcefile = None
+        #self.new_db(dbfile, sourcesheet.filename)
         
 
-    def new_db(self, dbfile, sourcefile):
-        self.source = sourcefile
-        if os.path.exists(dbfile):
-            os.remove(dbfile)
+    def new_db(self,  overwrite=True):
+        dbfile = self.dbfile
+        if overwrite:
+            if os.path.exists(dbfile):
+                os.remove(dbfile)
+                print('Removed SOVC database: {}'.format(dbfile))
 
-        # create new file
         self.conn = sqlite3.connect(dbfile)
         cur = self.conn.cursor()
         cur.executescript(sql.sovc_schema)
-        cur.execute('INSERT INTO source VALUES (?)', (sourcefile,))
+        print('Created schema in SOVC database: {}'.format(dbfile))
+        self.conn.commit()
 
+    def close(self):
+        self.conn.commit()
+        self.conn.close()
+
+    def summary(self):
+        print('Summarize database: {}'.format(self.dbfile))
+        self.conn = sqlite3.connect(self.dbfile)
+        cur = self.conn.cursor()
+        cur.execute('SELECT filename FROM source;')
+        self.sourcefile = cur.fetchone()[0]
+        cur.execute('SELECT num_to_vote_for,count(choice.race_id)'
+                    ' FROM choice,race'
+                    ' WHERE choice.race_id = race.race_id'
+                    ' GROUP BY race.race_id ORDER BY race.race_id;')
+
+        va_choice_list = [(int(r[0]),int(r[1])) for r in cur.fetchall()]
+        print('''
+SOVC Database Summary:
+   FILENAME: {} # CSV source
+   Race count: {}
+   Count (VoteFor,Choices) per race: \n{}
+###################################################################
+'''.format(self.sourcefile,
+           len(va_choice_list),
+           ','.join([str(v) for v in va_choice_list]),  ))
+
+    def insert_from_csv(self, csvfile):
+        """Append to existing Sqlite DB (or create new one). """
+        self.new_db(overwrite=True)
+        sovcsheet = SovcSheet(csvfile)
+        self.sourcefile = sovcsheet.filename
+        choices = defaultdict(set) # of choice_title for each race
+        cur = self.conn.cursor()
+        cells = sovcsheet.cells
+
+        cur.execute('INSERT INTO source VALUES (?)', (csvfile,))
+        
+        (race_list, choice_list) = sovcsheet.get_race_lists()
+        self.insert_race_list(race_list)
+        self.insert_choice_list(choice_list)
+
+        (precinct_list, vote_list) = sovcsheet.get_precinct_votes()
+        self.insert_precinct_list(precinct_list)        
+        self.insert_vote_list(vote_list)        
+
+        self.close()
+        logging.debug('DBG: Created RACE and CHOICE tables in {}'
+                      .format(self.dbfile))
+
+        sovcsheet.summary()
+        
     def insert_race_list(self, race_list):
         """race_list:: [(race_id, title, num_to_vote_for), ...]"""
         cur = self.conn.cursor()
@@ -79,10 +135,6 @@ class SovcDb():
         cur = self.conn.cursor()
         cur.executemany('INSERT INTO vote VALUES (?,?,?)', vote_list)
         
-    def close(self):
-        self.conn.commit()
-        self.conn.close()
-
     # OUTPUT: Race, NumToVoteFor, Choice, ChoiceId, ...
     def to_csv(self,csv_filename):
         self.conn = sqlite3.connect(self.dbfile)
@@ -121,155 +173,7 @@ class SovcDb():
 ### end SovcDb
 ##############################################################################
 
-##############################################################################
-### Spreadsheet
-###
 
-class SovcSheet():
-    """CSV format (per Nov-2017 results; '171107C_EXPORT DAY 2.CSV')
-   Row 1:: Race titles (duplicated over columns representing choices)
-   Row 2:: party (we don't care)
-   Row 3:: Choices
-   Row 4 to N-1:: Precinct totals
-   Row N:: Grand totals (County totals)
-   Row N+1:: "_x001A_"  ??? End of data?
-
-   Col 1:: County Number ('_x001A_' in last row)
-   Col 2:: Precinct Code (number)
-   Col 3:: Precinct Name (number) or "COUNTY TOTALS"
-   Col 4:: "REGISTERED VOTERS - TOTAL" (Row 1)
-   Col 5:: Ballots Cast-Total
-   Col 6:: Ballots Cast-Blank
-   Col 7 to M:: vote counts
-"""
-    filename = ''
-    cells = defaultdict(dict) # cells[row][column] => value
-    max_row = 0
-    max_col = 0
-    minDataC = 7  # Data COLUMN starts here
-    minDataR = 4  # Data ROW starts here
-    choiceLut = dict() # lut[title] = columnNumber
-    raceLut = dict() # lut[title] = columnNumber
-
-    def __init__(self, filename):
-        """RETURN: sparse 2D matrix representing spreadsheet"""
-        self.filename = filename
-        with open(filename, newline='') as csvfile:
-            sovcreader = csv.reader(csvfile, dialect='excel')
-            for rid,row in enumerate(sovcreader, 1):
-                for cid,val in enumerate(row,1):
-                    value = val.strip()
-                    if len(value) > 0:
-                        self.cells[rid][cid] = value
-                        self.max_col = max(self.max_col, cid)
-                #logging.debug('DBG: cells[rid]={}'.format(self.cells[rid]))
-                if (rid >= self.minDataR) and (len(self.cells[rid]) > 4):
-                    self.max_row = rid
-        #print('CELLS={}'.format(pprint.pformat(self.cells, indent=3)))
-        # END: init
-
-    def summary(self):
-        print('''
-Sheet Summary:
-   filename: {}
-
-   Max ROW:  {}
-   minDataR: {}
-   Max COL:  {}
-   minDataC: {}
-   Cell cnt: {}
-
-   Race cnt:   {}
-   Choice cnt: {}
-'''
-              .format(self.filename,
-                      self.max_row, self.minDataR,
-                      self.max_col, self.minDataC,
-                      sum([len(v) for v in self.cells.values()]),
-                      len(self.raceLut), len(self.choiceLut),
-              ))
-
-    def get_race_lists(self):
-        logging.debug('Get RACE and CHOICE lists')
-        race_list = list()   # [(rid, racetitle, numToVoteFor), ...]
-        choice_list = list() # [(cid, choicetitle, party), ...]
-        c1 = self.minDataC
-        while c1 <= self.max_col:
-            rid = c1
-            racetitle = self.cells[1][c1]
-            logging.debug('Racetitle={}'.format(racetitle))
-            race_list.append((rid, racetitle, None))
-            self.raceLut[racetitle] = rid
-            for c2 in range(c1, self.max_col+1):
-                #!logging.debug('c1={}, c2={}'.format(c1,c2))
-                cid = c2
-                if racetitle == self.cells[1][c2]:
-                    choicetitle = self.cells[3][c2]
-                    #!logging.debug('Choicetitle={}'.format(choicetitle))
-                    choice_list.append((cid, choicetitle, rid, None))
-                    self.choiceLut[choicetitle] = cid
-                else:
-                    cid -= 1
-                    break
-            c1 = cid + 1 
-        logging.debug('Race cnt={}, Choice cnt={}'
-                      .format(len(race_list), len(choice_list)))
-        return race_list, choice_list
-        
-    def get_precinct_votes(self):
-        "RETURN: dict[(race,choice)] => (count,precinct,regvot,baltot,balblank)"
-        logging.debug('Get PRECINCT and VOTE lists')
-
-        precinct_list = list() # [(race_id, choice_id, county, pcode, pname,
-                               # regvot, baltot, balblank), ...]
-        vote_list = list()     # [(cid, precinct_code, count), ...]
-        for col in range(self.minDataC, self.max_col+1):
-            racetitle = self.cells[1][col]
-            race_id = self.raceLut[racetitle]
-            choicetitle = self.cells[3][col]
-            choice_id = self.choiceLut[choicetitle]
-            for row in range(self.minDataR, self.max_row+1):
-                precinct_list.append(
-                    (race_id,
-                     choice_id,
-                     self.cells[row][1],   # county number
-                     self.cells[row][2],   # precinct code
-                     self.cells[row][3],   # precinct name
-                     self.cells[row][4],   # reg voters total
-                     self.cells[row][5],   # ballots total
-                     self.cells[row][6]    # ballots blank
-                    ))
-                vote_list.append(
-                    (choice_id,
-                     self.cells[row][2],
-                     self.cells[row][col] # vote count
-                    ))
-        return (precinct_list, vote_list)
-
-###
-### end SovcSheet
-##############################################################################
-
-
-def csv_to_db(csvfile, sqlite_file):
-    """Append to existing Sqlite DB (or create new one).
-"""
-    sovcsheet = SovcSheet(csvfile.name)
-    sovcdb = SovcDb(sqlite_file, sovcsheet)
-
-    (race_list, choice_list) = sovcsheet.get_race_lists()
-    sovcdb.insert_race_list(race_list)
-    sovcdb.insert_choice_list(choice_list)
-
-    (precinct_list, vote_list) = sovcsheet.get_precinct_votes()
-    sovcdb.insert_precinct_list(precinct_list)        
-    sovcdb.insert_vote_list(vote_list)        
-
-    sovcdb.close()
-    logging.debug('DBG: Created RACE and CHOICE tables in {}'
-                  .format(sqlite_file))
-
-    sovcsheet.summary()
 
 
 
@@ -285,12 +189,14 @@ def main():
     dfdb='SOVC.db'
     parser.add_argument('--version', action='version', version='1.0.1')
 
-    parser.add_argument('infile', type=argparse.FileType('r'),
-                        help='Input CSV file')
-    parser.add_argument('-d', '--database', type=argparse.FileType('w'),
+    parser.add_argument('--incsv', type=argparse.FileType('r'),
+                        help='Input CSV file to store into DB')
+    parser.add_argument('-d', '--database', 
                         default=dfdb,
                         help=('SQlite database file to hold content.'
                               '  [default="{}"]').format(dfdb))
+    parser.add_argument('--summary', '-s', action='store_true',
+                        help='Summarize database content.')
 
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
@@ -298,11 +204,7 @@ def main():
                                  'INFO', 'DEBUG'],
                         default='WARNING')
     args = parser.parse_args()
-    args.database.close()
-    args.database = args.database.name
 
-    #!print 'My args=',args
-    #!print 'infile=',args.infile
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -312,7 +214,14 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
-    csv_to_db(args.infile, args.database)
+    db = SovcDb(args.database)
+    if args.incsv:
+        args.incsv.close()
+        args.incsv = args.incsv.name
+        db.insert_from_csv(args.incsv)
+
+    if args.summary:
+        db.summary()
     
 if __name__ == '__main__':
     main()

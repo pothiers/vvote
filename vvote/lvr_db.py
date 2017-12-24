@@ -14,54 +14,81 @@ Underlying dimensionality of LVR Data (value is Choice(string)):
 import sys
 import argparse
 import logging
-import csv
 import os
 import os.path
 import sqlite3
 from collections import defaultdict
-import pprint
+from pprint import pprint, pformat
 
 from . import sql
-
-##############################################################################
-### Database
-###
+from .lvr_sheet import LvrSheet
 
 
 class LvrDb():
     """Manage LVR Database (sqlite3 format)"""
-
-    dbfile = None
-    sourcefile = None
-
+    
     def __init__(self, dbfile):
         self.dbfile = dbfile
-        self.new_db(dbfile, overwrite=True)
-    
+        self.sourcefile = None
+        self.conn = None
+        self.raceLut = dict() # lut[column] => raceId
 
-    def new_db(self, dbfile, overwrite=True):
+    def new_db(self, overwrite=True):
+        dbfile = self.dbfile
         if overwrite:
             if os.path.exists(dbfile):
                 os.remove(dbfile)
+                print('Removed LVR database: {}'.format(dbfile))
 
         self.conn = sqlite3.connect(dbfile)
         cur = self.conn.cursor()
         cur.executescript(sql.lvr_schema)
+        print('Created schema in LVR database: {}'.format(dbfile))
+        self.conn.commit()
+
+    def close_db(self):
+        self.conn.commit()
+        self.conn.close()
+
+    def summary(self):
+        print('Summarize database: {}'.format(self.dbfile))
+        self.conn = sqlite3.connect(self.dbfile)
+        cur = self.conn.cursor()
+        cur.execute('SELECT filename FROM source;')
+        self.sourcefile = cur.fetchone()[0]
+        cur.execute('SELECT votesAllowed,count(choice.race_id) FROM choice,race'
+                    ' WHERE choice.race_id = race.race_id'
+                    ' GROUP BY race.race_id ORDER BY race.race_id;')
+        va_choice_list = [(int(r[0]),int(r[1])) for r in cur.fetchall()]
+        print('''
+LVR Database Summary:
+   FILENAME: {} # CSV source
+   Race count: {}
+   Count (VoteFor,Choices) per race: \n{}
+###################################################################
+'''.format(self.sourcefile,
+           len(va_choice_list),
+           ','.join([str(v) for v in va_choice_list]),  ))
 
     def insert_from_csv(self,csvfile):
         """Append to existing Sqlite DB."""
+        self.new_db(overwrite=True)
         sheet = LvrSheet(csvfile)
-        sheet.summary()
-        
+        self.sourcfile = sheet.filename
+        choices = defaultdict(set) # of choice_title for each race
         cur = self.conn.cursor()
         cells = sheet.cells
+
         cur.execute('INSERT INTO source VALUES (?)', (csvfile,))
-        choices = set() # of choice_id
 
         # INSERT races
-        for racename,rid in sorted(sheet.raceLut.items(),key=lambda x: x[0]):
+        for racename,raceC in sorted(sheet.raceLut.items(),key=lambda x: x[0]):
             cur.execute('INSERT INTO race VALUES (?,?,?)',
-                        (rid, sheet.voteFor[racename], racename))
+                        (None, sheet.voteFor[racename], racename))
+            raceId = cur.lastrowid
+            self.raceLut[raceC] = raceId
+            #!print('DBG: INSERT (race_id, votesAllowed, title) = ({},{},{})'
+            #!      .format(rid, sheet.voteFor[racename], racename))
         # INSERT choices, cvr, vote
         for r in range(sheet.minDataR, sheet.max_row + 1):
             cvr_id = cells[r][1]
@@ -73,135 +100,21 @@ class LvrDb():
             #logging.debug('INSERT cvr: {}'.format(cvr_id))
 
             for c in range(sheet.minDataC, sheet.max_col + 1):
-                race_id = sheet.raceLut[cells[1][c]]
+                race_id = self.raceLut[sheet.raceLut[cells[1][c]]]
                 choice_title = cells[r].get(c,None)
-                if choice_title: # not blank
-                    choice_id = sheet.choiceLut[choice_title]
-                    #!logging.debug('cells[{},{}] = {} [{}]'.
-                    #!              format(r,c,cells[r][c], choice_id))
-                    if choice_id not in choices:
-                        choices.add(choice_id)
-                        cur.execute('INSERT INTO choice VALUES (?,?)',
-                                    (choice_id, cells[r][c]))
-                    cur.execute('INSERT INTO vote VALUES (?,?,?)',
-                                (cvr_id, race_id, choice_id))
-
+                choices[race_id].add(choice_title)
+        for race_id in choices.keys():
+            for title in choices[race_id]:
+                if title == None: continue
+                cur.execute('INSERT INTO choice VALUES (?,?,?)',
+                            (None, title, race_id))
+                choice_id = cur.lastrowid
+                cur.execute('INSERT INTO vote VALUES (?,?)',
+                            (cvr_id, choice_id))
+        print('Added CSV ({}) content to LVR database {}'
+              .format(csvfile, self.dbfile))
         self.conn.commit()
-        self.conn.close()
-
-    def tally(self, dbfile, compare=True):
-        """Count votes from ballots (LVR file). Create content similar enough
-to SOVC that the two can be compared."""
-        con = sqlite3.connect(dbfile)
-        raceLut = dict() # lut[rid] => title
-        for rid,rt in con.execute(sql.lvr_race):
-            raceLut[rid] = rt
-            
-        choiceLut = dict() # lut[cid] => title
-        for cid,ct in con.execute(sql.lvr_choice):
-            choiceLut[cid] = ct
-        pccount = defaultdict(int) # pccount[(pc,rid,cid)] => numVotes
-        for (rid,cid,pc) in con.execute(sql.lvr_vote):
-            pccount[(pc,rid,cid)] += 1
-        pprint.pprint(pccount)
-        
-
-### end LvrDb
-##############################################################################
-
-##############################################################################
-### Spreadsheet
-###
-class LvrSheet():
-    """CSV format (per G2016 results; 'day-1-cvr.csv')
- VERY SPARSE in places!
-
-   Row 1:: Headers
-     Col 1:: "Cast Vote Record"
-     Col 2:: "Precinct"
-     Col 3:: "Ballot Style"
-     Col 4 to M: RaceName 
-        May be blank for VoteFor > 1; treat as RaceName from left non-blank
-
-   Row N::
-     Col 1:: CVR (integer)
-     Col 2:: Precinct (integer)
-     Col 3:: Ballot Style (text)
-     Col 4 to M: ChoiceName (corresponding to RaceName in Row 1)
-"""
-    filename = ''
-    cells = defaultdict(dict) # cells[row][column] => value
-    max_row = 0
-    max_col = 0
-    minDataC = 4  # Data COLUMN starts here
-    minDataR = 2  # Data ROW starts here
-    raceLut = dict() # lut[raceName] = columnNumber (left col of race)
-    choiceLut = dict() # lut[choiceName] = id
-    voteFor = dict() # lut[raceName] = numberToVoteFor
-
-    def __init__(self, filename):
-        """RETURN: sparse 2D matrix representing spreadsheet"""
-        self.filename = filename
-        choice_id = 0
-        with open(filename, newline='') as csvfile:
-            reader = csv.reader(csvfile, dialect='excel')
-            for rid,row in enumerate(reader, 1):
-                for cid,val in enumerate(row,1):
-                    value = val.strip()
-                    if len(value) > 0:
-                        self.cells[rid][cid] = value
-                        if ((rid >= self.minDataR)  and (cid >= self.minDataC)
-                            and (value not in self.choiceLut)):
-                            self.choiceLut[value] = choice_id
-                            choice_id += 1
-                        #!else:
-                        #!    logging.debug('Already saw choice: "{}"'
-                        #!                  .format(value))
-                        self.max_col = max(self.max_col, cid)
-                if (rid >= self.minDataR) and (len(self.cells[rid]) >= self.minDataC):
-                    self.max_row = rid
-        # Fill RaceName for VoteFor > 1
-        raceName = None
-        for c in range(self.minDataC, self.max_col + 1):
-            if c in self.cells[1]:
-                raceName = self.cells[1][c]
-                self.voteFor[raceName] = 1
-                self.raceLut[raceName] = c
-            else:
-                self.cells[1][c] = raceName
-                self.voteFor[raceName] += 1
-        # END: init
-
-    def summary(self):
-        vals = sorted(self.choiceLut.values())
-        print('''
-Sheet Summary:
-   FILENAME: {} # CSV source
-   minDataR: {:2}  Max ROW:  {}
-   minDataC: {:2}  Max COL:  {}
-   Cell cnt: {}
-
-   Race cnt:     {}
-   VoteFor cnts: {}
-   Choice cnt:   {}
-   choice ids: {} ... {}
-###################################################################
-'''
-              .format(self.filename,
-                      self.minDataR, self.max_row, 
-                      self.minDataC, self.max_col, 
-                      sum([len(v) for v in self.cells.values()]),
-                      len(self.raceLut),
-                      ','.join([str(v) for v in self.voteFor.values()]),
-                      len(self.choiceLut),
-                      vals[:4], vals[len(vals)-4:],
-              ))
-
-
-###
-### end LvrSheet
-##############################################################################
-    
+        self.close_db()
 
 
 
@@ -217,24 +130,20 @@ def main():
     dfdb='LVR.db'
     parser.add_argument('--version', action='version', version='1.0.1')
 
-    parser.add_argument('infile', type=argparse.FileType('r'),
-                        help='Input CSV file')
-    parser.add_argument('-d', '--database', type=argparse.FileType('w'),
+    parser.add_argument('--incsv', type=argparse.FileType('r'),
+                        help='Input CSV file to store into DB')
+    parser.add_argument('-d', '--database', 
                         default=dfdb,
                         help=('SQlite database file to hold content.'
                               '  [default="{}"]').format(dfdb))
-
+    parser.add_argument('--summary', '-s', action='store_true',
+                        help='Summarize database content.')
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
                         choices=['CRTICAL', 'ERROR', 'WARNING',
                                  'INFO', 'DEBUG'],
                         default='WARNING')
     args = parser.parse_args()
-    args.database.close()
-    args.database = args.database.name
-    args.infile.close()
-    args.infile = args.infile.name
-
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -245,11 +154,17 @@ def main():
     #!logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
     db = LvrDb(args.database)
-    db.insert_from_csv(args.infile)
-    print('Inserted data from {} into {}'.format(args.infile, args.database))
+    if args.incsv:
+        args.incsv.close()
+        args.incsv = args.incsv.name
+        db.insert_from_csv(args.incsv)
+        #print('Inserted data from {} into {}'.format(args.incsv, args.database))
+        
     #!foo = 'foo-lvr.csv'
     #!db.to_csv(foo)
     #!print('Created CSV from DB in {}'.format(foo))
+    if args.summary:
+        db.summary()
     
 if __name__ == '__main__':
     main()
