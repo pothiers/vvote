@@ -63,8 +63,15 @@ Race and Choice titles from LVR strings to SOVC strings."""
             self.lvr_rlut[rid] = rti
             self.lvr_clut[cid] = cti
             self.lvr_rclut[rid].append(cid)
+        
+        self.con.execute('DELETE from lvr_race;')
+        for id,t in self.lvr_rlut.items():
+            self.con.execute('INSERT INTO lvr_race VALUES (?,?)',(id, t))
+        self.con.execute('DELETE from lvr_choice;')
+        for id,t in self.lvr_clut.items():
+            self.con.execute('INSERT INTO lvr_choice VALUES (?,?)',(id, t))
+
         self.con.commit()
-        self.con.close()
 
     def get_sovc_luts(self, sovcdb):
         """Extract 3 LUTS from DB that contain choices per race and 
@@ -78,7 +85,6 @@ Race and Choice titles from LVR strings to SOVC strings."""
             self.sovc_clut[cid] = cti
             self.sovc_rclut[rid].append(cid)
         self.con.commit()
-        self.con.close()
     
     def text_cidmap(self, cidmap):
         """idmap:: [(conf, lvr_id, sovc_id,), ...]"""
@@ -97,13 +103,15 @@ Race and Choice titles from LVR strings to SOVC strings."""
                       [self.sovc_clut[choice_id]
                        for choice_id in self.sovc_rclut[raceId]]))
               
-    
-    def calc(self):
+    def load_lvr_sovc_luts(self):
         cur = self.con.cursor()
         cur.execute('SELECT lvr_filename,sovc_filename FROM source;')
         self.lvrdb,self.sovcdb = cur.fetchone()
         self.get_lvr_luts(self.lvrdb)
         self.get_sovc_luts(self.sovcdb)
+        
+    def calc(self):
+        self.load_lvr_sovc_luts()
         self.con = sqlite3.connect(self.mapdb)
         
         self.con.execute('DELETE from race_map;')
@@ -160,15 +168,11 @@ Race and Choice titles from LVR strings to SOVC strings."""
                              (conf, lvr_id, lvr_title, sovc_id, sovc_title))
 
     def insert_choice_map(self,choiceIdMap, lvrRaceId, sovcRaceId):
-        #!print('insert_choice_map: lvrRace="{}", sovcRace="{}", choicemap={}'
-        #!      .format(self.lvr_rlut.get(lvrRaceId,None),
-        #!              self.sovc_rlut.get(sovcRaceId,None),
-        #!              [(self.lvr_clut[lid],self.sovc_clut.get(sid,None))
-        #!                for (conf,lid,sid) in choiceIdMap]))
         for (conf, lvr_id, sovc_id) in choiceIdMap:
-            self.con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?)',
+            self.con.execute('INSERT INTO choice_map VALUES (?,?,?,?,?,?)',
                              (conf,
-                              lvr_id,  self.lvr_clut[lvr_id],
+                              lvrRaceId, 
+                              lvr_id,  self.lvr_clut.get(lvr_id, None),
                               sovc_id, self.sovc_clut.get(sovc_id, None)
                              ))
 
@@ -188,8 +192,6 @@ Race and Choice titles from LVR strings to SOVC strings."""
         #!      .format(pformat(s.get_matching_blocks())))
         lvr_unmapped = set(iid)
         sovc_unmapped = set(jid)        
-        #!print('DBG-0: Num unmappedLVR={}, unmappedSOVC={}'
-        #!      .format(len(lvr_unmapped), len(sovc_unmapped)))
         for (lvr_idx, sovc_idx, size) in s.get_matching_blocks():
             for offset in range(size):
                 lvr_id = iid[lvr_idx+offset]
@@ -197,10 +199,6 @@ Race and Choice titles from LVR strings to SOVC strings."""
                 lvr_unmapped.discard(lvr_id)
                 sovc_unmapped.discard(sovc_id)
                 idmap.append((1.0, lvr_id, sovc_id))
-        #!print('DBG-1: idmap=',idmap)
-        #!print('DBG-1: Num unmappedLVR={}, unmappedSOVC={}'
-        #!      .format(len(lvr_unmapped), len(sovc_unmapped)))
-
         lvr_lut = dict(cleaned_lvr_items)
         sovc_lut = dict(sovc_items)
         bestlvr = None
@@ -219,9 +217,11 @@ Race and Choice titles from LVR strings to SOVC strings."""
         # If any LVR ids were not paired up, map them to NONE
         for lvr_id in lvr_unmapped:
             idmap.append((0, lvr_id, None))
+        for sovc_id in sovc_unmapped:
+            idmap.append((0, None, sovc_id))
         #!print('DBG-2: idmap=\n',pformat(idmap))
-        #!print('DBG-2: Num unmappedLVR={}, unmappedSOVC={}'
-        #!      .format(len(lvr_unmapped), len(sovc_unmapped)))
+        print('DBG-2: Num unmappedLVR={}, unmappedSOVC={}'
+              .format(len(lvr_unmapped), len(sovc_unmapped)))
         return idmap
         
     def OBSOLETE_gen_map_by_opcodes(self, lvr_items, sovc_items):
@@ -281,20 +281,106 @@ Race and Choice titles from LVR strings to SOVC strings."""
         with open(racemap_csv, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, dialect='excel')
             writer.writerow(headers)
-            for (conf,lid,lti,sid,sti) in con.execute(sql.race_map):
+            for (conf, lid,lti,sid,sti) in con.execute(sql.race_map):
                 writer.writerow([conf,lid,lti,sid,sti])
 
         #headers = 'Conf,LRace,LId,LTitle,SRace,SId,Stitle'.split(',')
-        headers = 'Conf,LId,LTitle,SId,Stitle'.split(',')
+        headers = 'Conf,LRaceId,LId,LTitle,SId,STitle'.split(',')
         with open(choicemap_csv, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, dialect='excel')
             writer.writerow(headers)
-            for (conf,lid,lti,sid,sti) in con.execute(sql.choice_map):
-                writer.writerow([conf, lid,lti,sid,sti])
+            for (conf,lrti, lid,lti,sid,sti) in con.execute(sql.choice_map):
+                writer.writerow([conf, lrti,lid,lti,sid,sti])
         print('Wrote racemap: {}, choicemap: {}'
               .format(racemap_csv, choicemap_csv))
 
+    # VALIDATE:
+    # 1. all text same as DB (not changed in CSV)
+    # 2. still one-to-one mapping (LVR->SOVC)
+    # 3. ChoiceId and Title still match for both LVR an SOVC
+    # N. other??
+    def validate_choice_row(self, row, orig, new):
+        conf = float(row['Conf'])
+        lraceid = int(row['LRaceId'])
+        lid = None if row['LId'] == None else int(row['LId'])
+        ltitle = row['LTitle']
+        
+        key = (lraceid, lid, ltitle)
+        if not (0.0 <= conf  <= 1.0):
+            raise Exception('Conf ({}) not in range [0.0:1.0]'.format(conf))
+        if key in new:
+            raise Exception('Duplicate LVR entry (LRaceId,LId,LTitle)={}'
+                            .format((lraceid,lid, ltitle)))
+        if key not in orig: 
+            raise Exception('LVR entry (LRaceId,LId,LTitle) not in orig={}'
+                            .format((lraceid,lid, ltitle)))
+        if lraceid not in self.lvr_rlut:
+            raise Exception('LRaceId ({}) not in LVR race list.'
+                            .format(lraceid))
 
+        if lid not in self.lvr_clut:
+            raise Exception('LId ({}) not in LVR choices per DB.'
+                            .format(lid))
+        if self.lvr_clut[lid] != ltitle:
+            raise Exception('LId ({}) and LTitle ({}) do not correspond in DB.'
+                            .format(lid,ltitle))
+        if lid not in self.lvr_rclut[lraceid]:
+            raise Exception('LId ({}) not in LVR choice list for race ({}).'
+                            .format(lid,lraceid))
+
+        sid = int(row['SId'])
+        stitle = row['STitle']
+        if sid not in self.sovc_clut:
+            raise Exception('SId ({}) not in SOVC choices per DB.'
+                            .format(sid))
+        if self.sovc_clut[sid] != stitle:
+            raise Exception('SId ({}) and STitle ({}) do not correspond in DB.'
+                            .format(sid,stitle))
+        #!if sid not in self.sovc_rclut[lraceid]
+        #!    raise Exception('SId ({}) not in SOVC choice list for race ({}).'
+        #!                    .format(sid,lraceid))
+        return True
+        
+
+    def load_choice_map(self, choicemap_csv='CHOICEMAP.csv'):
+        self.load_lvr_sovc_luts()
+        orig = dict() # orig[(raceId,lvrChoiceId,LvrChoiceTitl)=(conf, sid, sti)
+        new  = dict() # new [(raceId,lvrChoiceId,LvrChoiceTitl)=(conf, sid, sti)
+        for (conf,lrid, lid,lti,sid,sti) in self.con.execute(sql.choice_map):
+            lidval = None if lid == None else int(lid)
+            orig[(int(lrid), lidval, lti)] = (float(conf), int(sid), sti)
+        #!print('DBG: orig={}'.format(pformat(orig)))
+        errors = 0
+        with open(choicemap_csv) as csvfile:
+            for row in csv.DictReader(csvfile, dialect='excel'):
+                if len(row['LId']) == 0: continue
+                try:
+                    self.validate_choice_row(row, orig, new)
+                except Exception as err:
+                    logging.error('Invalid CHOICE map row: {}; {}'
+                                  .format(row,err))
+                    errors += 1
+                    continue
+                else:
+                    new[(row['LRaceId'],row['LId'],row['LTitle'])] = (
+                        row['Conf'], row['SId'], row['STitle'])
+
+        if errors == 0:
+            self.con.execute('DELETE from choice_map;')
+            for ((race,lid,ltitle), (conf,sid,stitle)) in new.items():
+                self.con.execute('INSERT INTO choice_map VALUES(?,?,?,?,?,?)',
+                                 (conf, race, lid, ltitle, sid, stitle))
+            print('CHOICMAP imported from: {}'.format(choicemap_csv))
+        else:
+            logging.error('NOT importing CHOICEMAP due to {} errors.'
+                          .format(errors))
+                    
+    def load_maps(self, racemap_csv, choicemap_csv):
+        print('DBG: loading RACE,CHOICE maps into: {}'.format(self.mapdb))
+        self.con = sqlite3.connect(self.mapdb)
+        #self.load_race_map(racemap_csv=racemap_csv)
+        self.load_choice_map(choicemap_csv=choicemap_csv)
+                
 
 def gen_mapping(lvrdb, sovcdb, mapdb):
     if os.path.exists(mapdb):
@@ -515,8 +601,11 @@ def main():
                         help='Calculating mapping (and store in db)')
     parser.add_argument('--pretty', '-p', action='store_true',
                         help='Pretty-print mapping')
-    parser.add_argument('--export', '-e', action='store_true',
-                        help='Export mapping suitable for editing')
+    parser.add_argument('--exportmaps', '-e', action='store_true',
+                        help='Export mapping table suitable for editing')
+    parser.add_argument('--importmaps', '-i', nargs=2,
+                        help=('Import mapping tables from'
+                              ' Races.csv and Choices.csv')  )
     
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
@@ -558,8 +647,10 @@ def main():
 #!    if args.pretty:
 #!        print('Printing current mapping')
 #!        printmap()
-    if args.export:
+    if args.exportmaps:
         mdb.export()
+    if args.importmaps:
+        mdb.load_maps(*args.importmaps)
         
 if __name__ == '__main__':
     main()

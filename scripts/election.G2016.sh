@@ -24,5 +24,5 @@ makemapdb -l $out/LVR.db -s $out/SOVC.db --mapdb $out/MAP.db
 echo "Generate mappings between LVR and SOVC"
 makemapdb -m $out/MAP.db --calc
 
-#!makemapdb -m $out/MAP.db --export
+makemapdb -m $out/MAP.db --export
 #!~/sandbox/vvote/scripts/compare.sh

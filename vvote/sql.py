@@ -229,6 +229,7 @@ CREATE TABLE race_map (
 -- Map LVR Choice titles to SOVC Choice titles
 CREATE TABLE choice_map (
    confidence real, -- in range [0.0,1.0]; similarity metric; 1.0 == identical
+   lvr_race_id integer,
    lvr_choice_id integer,
    lvr_choice_title text,
    sovc_choice_id integer,
@@ -245,11 +246,13 @@ FROM race_map ORDER BY lti;'''
 
 choice_map = '''SELECT
    confidence,
+   lvr_race_id AS lrid,
    lvr_choice_id AS lid,
    lvr_choice_title AS lti,
    sovc_choice_id AS sid,
    sovc_choice_title AS sti
-FROM choice_map ORDER BY lti;'''
+FROM choice_map
+ORDER BY lrid,lti;'''
 # lvr_race as lrt,
 # sovc_race as srt,
 
