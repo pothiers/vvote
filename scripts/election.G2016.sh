@@ -25,4 +25,10 @@ echo "Generate mappings between LVR and SOVC"
 makemapdb -m $out/MAP.db --calc
 
 makemapdb -m $out/MAP.db --export
+# EDIT the RACEMAP.csv and CHOICEMAP.csv files to fix wrong mappings
+
+# Import modified maps
+makemapdb -m $out/MAP.db --import RACEMAP.csv CHOICEMAP.new.csv
+
+
 #!~/sandbox/vvote/scripts/compare.sh

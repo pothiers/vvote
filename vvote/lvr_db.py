@@ -75,10 +75,12 @@ LVR Database Summary:
         self.new_db(overwrite=True)
         sheet = LvrSheet(csvfile)
         self.sourcfile = sheet.filename
-        choices = defaultdict(set) # of choice_title for each race
         cur = self.conn.cursor()
         cells = sheet.cells
 
+        choices = defaultdict(set) # of choice_title for each race
+        choiceInvLut = dict() # lut[choiceTitle] => choiceId
+        
         cur.execute('INSERT INTO source VALUES (?)', (csvfile,))
 
         # INSERT races
@@ -102,15 +104,17 @@ LVR Database Summary:
             for c in range(sheet.minDataC, sheet.max_col + 1):
                 race_id = self.raceLut[sheet.raceLut[cells[1][c]]]
                 choice_title = cells[r].get(c,None)
-                choices[race_id].add(choice_title)
-        for race_id in choices.keys():
-            for title in choices[race_id]:
-                if title == None: continue
-                cur.execute('INSERT INTO choice VALUES (?,?,?)',
-                            (None, title, race_id))
-                choice_id = cur.lastrowid
+                if choice_title == None: continue
+
+                if choice_title not in choiceInvLut:
+                    cur.execute('INSERT INTO choice VALUES (?,?,?)',
+                                (None, choice_title, race_id))
+                    choice_id = cur.lastrowid
+                    choiceInvLut[choice_title] = choice_id
+                    
                 cur.execute('INSERT INTO vote VALUES (?,?)',
-                            (cvr_id, choice_id))
+                            (cvr_id, choiceInvLut[choice_title]))
+
         print('Added CSV ({}) content to LVR database {}'
               .format(csvfile, self.dbfile))
         self.conn.commit()

@@ -224,56 +224,6 @@ Race and Choice titles from LVR strings to SOVC strings."""
               .format(len(lvr_unmapped), len(sovc_unmapped)))
         return idmap
         
-    def OBSOLETE_gen_map_by_opcodes(self, lvr_items, sovc_items):
-        """RETURN  idmap:: [(conf, lvr_id, sovc_id), ...]"""
-        idmap = list() 
-        #!print('lvr_items=',lvr_items)
-        #!print('sovc_items=',sovc_items)
-        iid,ititle = zip(*lvr_items)
-        jid,jtitle = zip(*sovc_items)
-        s = SequenceMatcher(None, ititle, jtitle)
-        print('GEN_MAP_BY_OPCODES:')
-        print('LVR titles:\n{}'.format(pformat(ititle)))
-        print('SOVC title:\n{}'.format(pformat(jtitle)))
-        print('SM.matching_blocks: \n{}'
-              .format(pformat(s.get_matching_blocks())))
-        print('SM.opcodes: \n{}'.format(pformat(s.get_opcodes())))
-
-        # Possible tags: equal, delete, insert, replace
-        # Insert ORIGINAL titles into map (using offset in title list)
-        for (tag, i1, i2, j1, j2) in s.get_opcodes():
-            ispan = i2-i1
-            jspan = j2-j1
-            if tag == 'equal':
-                # a[i1:i2] == b[j1:j2] (the sub-sequences are equal).
-                for offset in range(ispan):
-                    conf=similar(ititle[i1+offset], jtitle[j1+offset])
-                    idmap.append((conf, iid[i1+offset], jid[j1+offset]))
-            elif tag == 'replace':
-                # [i1:i2] should be replaced by b[j1:j2].
-                if (ispan == jspan):
-                    for offset in range(ispan):
-                        conf=similar(ititle[i1+offset], jtitle[j1+offset])
-                        idmap.append((conf, iid[i1+offset], jid[j1+offset]))
-                else:
-                    # There are diff numbers of titles in LVR and SOVC.
-                    # Insert each separately.
-                    for offset in range(ispan):
-                        idmap.append((0, iid[i1+offset], None))
-                    for offset in range(jspan):
-                        idmap.append((0, None, jid[j1+offset]))
-            elif tag == 'delete':    # No SOVC, add to LVR
-                # a[i1:i2] should be deleted. Note that j1 == j2 in this case.
-                for offset in range(ispan):
-                    conf=similar(ititle[i1+offset], jtitle[j1+offset])
-                    idmap.append((0, iid[i1+offset], None))
-            elif tag == 'insert':    # No LVR, add to SOVC
-                # b[j1:j2] should be inserted at a[i1:i1]. NB i1 == i2 this case.
-                for offset in range(jspan):
-                    conf=similar(ititle[i1+offset], jtitle[j1+offset])
-                    idmap.append((0, None, jid[j1+offset]))
-
-        return idmap
     
     def export(self, racemap_csv='RACEMAP.csv', choicemap_csv='CHOICEMAP.csv' ):
         con = sqlite3.connect(self.mapdb)
@@ -382,51 +332,6 @@ Race and Choice titles from LVR strings to SOVC strings."""
         self.load_choice_map(choicemap_csv=choicemap_csv)
                 
 
-def gen_mapping(lvrdb, sovcdb, mapdb):
-    if os.path.exists(mapdb):
-        os.remove(mapdb)
-    conmap = sqlite3.connect(mapdb)
-    conmap.executescript(sql.map_schema)
-    conmap.execute('INSERT INTO source VALUES (?,?,?)',
-                   (mapdb, lvrdb, sovcdb))
-
-    # LVR: Insert Race,Choice info 
-    conlvr = sqlite3.connect(lvrdb)
-    lrc_lut = defaultdict(list) # lut[rid] => [cid, ...]
-    lr_lut = dict() # lut[id] => title
-    lc_lut = dict() # lut[id] => title
-    for (rt,rid,ct,cid) in conlvr.execute(sql.map_lvr_rc):
-        lrc_lut[rid].append(cid)
-        lr_lut[rid] = rt
-        lc_lut[cid] = ct
-    for id,t in lr_lut.items():
-        conmap.execute('INSERT INTO lvr_race VALUES (?,?)',(id, t))
-    for id,t in lc_lut.items():
-        conmap.execute('INSERT INTO lvr_choice VALUES (?,?)',(id, t))
-    for rid in lrc_lut.keys():
-        for cid in lrc_lut[rid]:
-            conmap.execute('INSERT INTO lvr_rc VALUES (?,?)',(rid,cid))
-
-    # SOVC: Insert Race,Choice info 
-    consovc = sqlite3.connect(sovcdb)
-    src_lut = defaultdict(list) # rc[rid] => [cid, ...]
-    sr_lut = dict() # lut[id] => title
-    sc_lut = dict() # lut[id] => title
-    for (rt,rid,ct,cid) in consovc.execute(sql.map_sovc_rc):
-        src_lut[rid].append(cid)
-        sr_lut[rid] = rt
-        sc_lut[cid] = ct
-    for id,t in sr_lut.items():
-        conmap.execute('INSERT INTO sovc_race VALUES (?,?)',(id, t))
-    for id,t in sc_lut.items():
-        conmap.execute('INSERT INTO sovc_choice VALUES (?,?)',(id, t))
-    for rid in src_lut.keys():
-        for cid in src_lut[rid]:
-            conmap.execute('INSERT INTO sovc_rc VALUES (?,?)',(rid,cid))
-    
-    conmap.commit()
-    conmap.close()
-
 
 # Normalize differentces between LVR and SOVC choices
 # LVR may contain unicode
@@ -481,82 +386,6 @@ RETURN: [(choiceId,newChoiceTitle), ...];  Sorted by TITLE.
     return sorted(newlut.items(), key=lambda x: x[1])
 
     
-def insert_choice_by_opcodes(con, llut, lvr_lut, slut, sovc_lut):
-    def insert_choice_titles(ispan, i1, i2, j1, j2):
-        sql='INSERT INTO choice_map VALUES (?,?,?,?,?,?,?)'
-
-
-
-#!def insert_race_by_opcodes(con, llut, lvr_lut, slut, sovc_lut):
-#!    """ Insert RACE map
-#!llut:: llut[id] => lvr_title
-#!lvr_lut:: lut[raceId] => [choiceId, ...]
-#!slut:: slut[id] => sovc_title
-#!sovc_lut:: lut[raceId] => [choiceId, ...]
-#!"""
-#!    def insert_race_titles(ispan, i1, i2, j1, j2):
-#!        sql='INSERT INTO race_map VALUES (?,?,?,?,?)'
-#!        for offset in range(ispan):
-#!            conf=similar(iti[i1+offset], jti[j1+offset])
-#!            con.execute(sql, (conf,
-#!                              iid[i1+offset], llut[iid[i1+offset]],
-#!                              iid[i1+offset], slut[jid[j1+offset]]))
-#!    con.execute('DELETE from race_map;')
-#!
-#!
-#!    iid,iti = zip(*lvr_lut)
-#!    jid,jti = zip(*sovc_lut)
-#!    s = SequenceMatcher(None, iti, jti)
-#!    print('INSERT for: RACE_MAP')
-#!    print('LVR titles:\n{}'.format(pformat(iti)))
-#!    print('SOVC title:\n{}'.format(pformat(jti)))
-#!    print('SM.matching_blocks: \n{}'.format(pformat(s.get_matching_blocks())))
-#!    print('SM.opcodes: \n{}'.format(pformat(s.get_opcodes())))
-#!    
-#!    # Possible tags: equal, delete, insert, replace
-#!    # Insert ORIGINAL titles into map (using offset in title list)
-#!    for (tag, i1, i2, j1, j2) in s.get_opcodes():
-#!        ispan = i2-i1
-#!        jspan = j2-j1
-#!        if tag == 'equal':
-#!            # a[i1:i2] == b[j1:j2] (the sub-sequences are equal).
-#!            for offset in range(ispan):
-#!                conf=similar(iti[i1+offset], jti[j1+offset])
-#!                con.execute(sql, (conf,
-#!                                  iid[i1+offset], llut[iid[i1+offset]],
-#!                                  iid[i1+offset], slut[jid[j1+offset]]))
-#!        elif tag == 'replace':
-#!            # [i1:i2] should be replaced by b[j1:j2].
-#!            if (ispan == jspan):
-#!                for offset in range(ispan):
-#!                    conf=similar(iti[i1+offset], jti[j1+offset])
-#!                    con.execute(sql, (conf,
-#!                                      iid[i1+offset], llut[iid[i1+offset]],
-#!                                      jid[j1+offset], slut[jid[j1+offset]]))
-#!            else:
-#!                # There are diff numbers of titles in LVR and SOVC.
-#!                # Insert each separately.
-#!                for offset in range(ispan):
-#!                    con.execute(sql, (0,
-#!                                      iid[i1+offset], llut[iid[i1+offset]],
-#!                                      -1, ''))
-#!                for offset in range(jspan):
-#!                    con.execute(sql, (0,
-#!                                      -1, '',
-#!                                      jid[j1+offset], slut[jid[j1+offset]]))
-#!        elif tag == 'delete':    # No SOVC, add to LVR
-#!            # a[i1:i2] should be deleted. Note that j1 == j2 in this case.
-#!            for offset in range(ispan):
-#!                con.execute(sql, (0,
-#!                                  iid[i1+offset], llut[iid[i1+offset]],
-#!                                  -1, ''))
-#!        elif tag == 'insert':    # No LVR, add to SOVC
-#!            # b[j1:j2] should be inserted at a[i1:i1]. NB i1 == i2 in this case.
-#!            for offset in range(jspan):
-#!                con.execute(sql, (0,
-#!                                  -1, '',
-#!                                  jid[j1+offset], slut[jid[j1+offset]]))
-
 
 def similar(lvr,sovc):
     "Symetric similarity [0,1].  1.0 for identical."
@@ -566,13 +395,6 @@ def similar(lvr,sovc):
 
 
           
-#!def import(mapdb, racemap_csv='RACEMAP.csv', choicemap_csv='CHOICEMAP.csv' ):
-#!    """Read RACEMAP and CHOICEMAP as CSV and store in mapdb.
-#!VERIFY:
-#!1. no change was made to any text
-#!2. there is still a one-to-one mapping
-#!"""
-#!    pass
 
 ##############################################################################
 
