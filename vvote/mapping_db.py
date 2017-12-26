@@ -29,6 +29,14 @@ from . import sql
 class MapDb():
     """Manage Map database (sqlite3 format).  It provides tables to map 
 Race and Choice titles from LVR strings to SOVC strings."""
+
+    fixed_mapping = [
+        # LVR,        SOVC
+        ('overvote', 'OVER VOTES'),
+        ('undervote','UNDER VOTES'),
+        ('Write-in', 'WRITE-IN')
+        ]
+    
     def __init__(self, mapdb, new=False):
         self.mapdb = mapdb
         self.con = sqlite3.connect(self.mapdb)
@@ -37,7 +45,7 @@ Race and Choice titles from LVR strings to SOVC strings."""
         self.lvr_clut = dict() # lut[choiceId] => choiceTitle
         self.lvr_rclut = defaultdict(list) # lut[raceId] => [choiceId, ...]
         # SOVC db data
-        self.sovc_rlut = dict() # lut[raceIdd] => raceTitle
+        self.sovc_rlut = dict() # lut[raceId] => raceTitle
         self.sovc_clut = dict() # lut[choiceId] => choiceTitle
         self.sovc_rclut = defaultdict(list) # lut[raceId] => [choiceId, ...]
         if new:
@@ -119,12 +127,9 @@ Race and Choice titles from LVR strings to SOVC strings."""
 
         ### Compare Races of LVR,SOVC
         # ridmap:: [(conf, lvr_id, sovc_id,), ...]
-
-        #!ridmap = self.gen_map_by_opcodes(clean_races(self.lvr_rlut),
-        #!                                 self.sovc_rlut.items())
         ridmap = self.gen_map_by_matchblocks(clean_races(self.lvr_rlut),
-                                             self.sovc_rlut.items())
-        print('ridmap(conf,lvrid,sovcid)=',ridmap)
+                                             self.sovc_rlut.items() )
+        #! print('ridmap(conf,lvrid,sovcid)=',ridmap)
         lvrmaplist = [lvrid for (c,lvrid,sovcid) in ridmap]
         ridmapLut = dict([(lvrid,sovcid) for (c,lvrid,sovcid) in ridmap])
         self.insert_race_map(ridmap)
@@ -138,22 +143,22 @@ Race and Choice titles from LVR strings to SOVC strings."""
                 missing += 1
                 continue
             sovcRaceId = ridmapLut[lvrRaceId]
-            self.print_lvr_race_choices(lvrRaceId)
-            self.print_sovc_race_choices(sovcRaceId)
+            #!self.print_lvr_race_choices(lvrRaceId)
+            #!self.print_sovc_race_choices(sovcRaceId)
             lvr_lut = dict([(cid, self.lvr_clut[cid]) for cid in choiceIds])
             # use just generated ridmap to map LVR_RaceId to SOVC_RaceId
             sovc_lut = dict([(cid, self.sovc_clut[cid])
                              for cid in self.sovc_rclut[sovcRaceId]])
-            print('len(lvr_lut)=',len(lvr_lut))
-            print('len(sovc_lut)=',len(sovc_lut))
-            #!cidmap = self.gen_map_by_opcodes(clean_choices(lvr_lut),
-            #!                                 sovc_lut.items())
+            # cidmap:: [(conf, lvr_id, sovc_id), ...]
             cidmap = self.gen_map_by_matchblocks(clean_choices(lvr_lut),
-                                                 sovc_lut.items())
+                                                 sovc_lut.items(),
+                                                 lvr_raceid=lvrRaceId,
+                                                 sovc_raceid=sovcRaceId )
+            #print('DBG cidmap=',pformat(cidmap))
             self.insert_choice_map(cidmap,lvrRaceId, sovcRaceId)
-            print('Choices map for race "{}":\n{}'
-                  .format(self.lvr_rlut[lvrRaceId],
-                           self.text_cidmap(cidmap)))
+            #!print('Choices map for race "{}":\n{}'
+            #!      .format(self.lvr_rlut[lvrRaceId],
+            #!               self.text_cidmap(cidmap)))
 
         print('Missing {} LVR races'.format(missing))
         self.con.commit()
@@ -176,20 +181,36 @@ Race and Choice titles from LVR strings to SOVC strings."""
                               sovc_id, self.sovc_clut.get(sovc_id, None)
                              ))
 
+
         
-    def gen_map_by_matchblocks(self, cleaned_lvr_items, sovc_items):
-        """RETURN  idmap:: [(conf, lvr_id, sovc_id,), ...]"""
-        idmap = list() 
-        #!print('cleaned_lvr_items=',cleaned_lvr_items)
-        #!print('sovc_items=',sovc_items)
-        iid,ititle = zip(*cleaned_lvr_items)
+    def gen_map_by_matchblocks(self, cleaned_lvr_items, sovc_items,
+                               lvr_raceid=None,
+                               sovc_raceid=None ):
+        """
+lvr_items :: [(id,title), ...]
+RETURN  idmap:: [(conf, lvr_id, sovc_id), ...]"""
+        if lvr_raceid != None:
+            # lvrInv[title] => id
+            lvrInv = dict([(self.lvr_clut[cid],cid)
+                           for cid in self.lvr_rclut[lvr_raceid]])
+            sovcInv = dict([(self.sovc_clut[cid],cid)
+                           for cid in self.sovc_rclut[sovc_raceid]])
+            idmap = [(1.0, lvrInv[lvr], sovcInv[sovc])
+                     for (lvr,sovc) in self.fixed_mapping]
+        else:
+            idmap = list()
+        fixed_lvr,fixed_sovc = zip(*self.fixed_mapping)
+        lvr_items = [(id,title) for (id,title) in cleaned_lvr_items
+                     if (title not in fixed_lvr)]
+        sovc_items = [(id,title) for (id,title) in sovc_items
+                      if (title not in fixed_sovc)]
+        if len(lvr_items) == 0:
+            return [(0,None,sid) for sid,stitle in sovc_items]
+        iid,ititle = zip(*lvr_items)
         if len(sovc_items) == 0:
             return [(0,lid,None) for lid in iid]
-
         jid,jtitle = zip(*sovc_items)
         s = SequenceMatcher(None, ititle, jtitle)
-        #!print('SM.matching_blocks: \n{}'
-        #!      .format(pformat(s.get_matching_blocks())))
         lvr_unmapped = set(iid)
         sovc_unmapped = set(jid)        
         for (lvr_idx, sovc_idx, size) in s.get_matching_blocks():
@@ -219,9 +240,9 @@ Race and Choice titles from LVR strings to SOVC strings."""
             idmap.append((0, lvr_id, None))
         for sovc_id in sovc_unmapped:
             idmap.append((0, None, sovc_id))
-        #!print('DBG-2: idmap=\n',pformat(idmap))
-        print('DBG-2: Num unmappedLVR={}, unmappedSOVC={}'
-              .format(len(lvr_unmapped), len(sovc_unmapped)))
+
+        #!print('DBG-2: Num unmappedLVR={}, unmappedSOVC={}'
+        #!      .format(len(lvr_unmapped), len(sovc_unmapped)))
         return idmap
         
     
@@ -235,11 +256,14 @@ Race and Choice titles from LVR strings to SOVC strings."""
                 writer.writerow([conf,lid,lti,sid,sti])
 
         #headers = 'Conf,LRace,LId,LTitle,SRace,SId,Stitle'.split(',')
+        #ignoreTitles = ['WRITE-IN', 'OVER VOTES', 'UNDER VOTES']
         headers = 'Conf,LRaceId,LId,LTitle,SId,STitle'.split(',')
         with open(choicemap_csv, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, dialect='excel')
             writer.writerow(headers)
             for (conf,lrti, lid,lti,sid,sti) in con.execute(sql.choice_map):
+                #!if lti in ignoreTitles: continue
+                #!if sti in ignoreTitles: continue
                 writer.writerow([conf, lrti,lid,lti,sid,sti])
         print('Wrote racemap: {}, choicemap: {}'
               .format(racemap_csv, choicemap_csv))
@@ -272,8 +296,9 @@ Race and Choice titles from LVR strings to SOVC strings."""
             raise Exception('LId ({}) not in LVR choices per DB.'
                             .format(lid))
         if self.lvr_clut[lid] != ltitle:
-            raise Exception('LId ({}) and LTitle ({}) do not correspond in DB.'
-                            .format(lid,ltitle))
+            raise Exception(('LId ({}) and LTitle ({}) do not correspond'
+                             ' in DB ({}).')
+                            .format(lid, ltitle, self.mapdb))
         if lid not in self.lvr_rclut[lraceid]:
             raise Exception('LId ({}) not in LVR choice list for race ({}).'
                             .format(lid,lraceid))
@@ -284,8 +309,9 @@ Race and Choice titles from LVR strings to SOVC strings."""
             raise Exception('SId ({}) not in SOVC choices per DB.'
                             .format(sid))
         if self.sovc_clut[sid] != stitle:
-            raise Exception('SId ({}) and STitle ({}) do not correspond in DB.'
-                            .format(sid,stitle))
+            raise Exception(('SId ({}) and STitle ({}) do not correspond'
+                             ' in DB ({}).')
+                            .format(sid, stitle, self.mapdb))
         #!if sid not in self.sovc_rclut[lraceid]
         #!    raise Exception('SId ({}) not in SOVC choice list for race ({}).'
         #!                    .format(sid,lraceid))
@@ -299,7 +325,6 @@ Race and Choice titles from LVR strings to SOVC strings."""
         for (conf,lrid, lid,lti,sid,sti) in self.con.execute(sql.choice_map):
             lidval = None if lid == None else int(lid)
             orig[(int(lrid), lidval, lti)] = (float(conf), int(sid), sti)
-        #!print('DBG: orig={}'.format(pformat(orig)))
         errors = 0
         with open(choicemap_csv) as csvfile:
             for row in csv.DictReader(csvfile, dialect='excel'):
@@ -326,11 +351,11 @@ Race and Choice titles from LVR strings to SOVC strings."""
                           .format(errors))
                     
     def load_maps(self, racemap_csv, choicemap_csv):
-        print('DBG: loading RACE,CHOICE maps into: {}'.format(self.mapdb))
         self.con = sqlite3.connect(self.mapdb)
         #self.load_race_map(racemap_csv=racemap_csv)
+        print("WARNING: not importing RACEMAP!!!")
         self.load_choice_map(choicemap_csv=choicemap_csv)
-                
+        self.con.commit()
 
 
 # Normalize differentces between LVR and SOVC choices
@@ -370,13 +395,13 @@ RETURN: [(choiceId,newChoiceTitle), ...];  Sorted by TITLE.
         ('Í',        'I'),
         ('Ó',        'O'),
         ('Ú',        'U'),
-        ('overvote', 'OVER VOTES'),
-        ('undervote','UNDER VOTES'),
         ('YES/SÍ',   'YES'),
         ('YES/Sí',   'YES'),
         ('YES/SI',   'YES'),
-        ('Write-in', 'WRITE-IN'),
     ]
+    #! ('overvote', 'OVER VOTES'),
+    #! ('undervote','UNDER VOTES'),
+    #! ('Write-in', 'WRITE-IN'),
 
     for k in lut.keys():
         newlut[k] = rem_party(newlut[k])
@@ -400,7 +425,6 @@ def similar(lvr,sovc):
 
 def main():
     "Parse command line arguments and do the work."
-    #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='My shiny new python program',
         epilog='EXAMPLE: %(prog)s a b"'

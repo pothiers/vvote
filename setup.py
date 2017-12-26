@@ -91,6 +91,7 @@ setup(
             'sovc=vvote.sovc:main',
             'sovcdb=vvote.sovc_db:main',
             'lvrdb=vvote.lvr_db:main',
+            'lvrcnt=vvote.lvr_count:main',
             'lvr2csv=vvote.lvr_db_csv:main',
             'makemapdb=vvote.mapping_db:main',
             'lvr=vvote.lvr:main',

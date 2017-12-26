@@ -19,7 +19,7 @@ import os
 import os.path
 import sqlite3
 from collections import defaultdict
-import pprint
+from pprint import pprint, pformat
 
 from . import sql
 from .sovc_sheet import SovcSheet
@@ -30,6 +30,8 @@ from .sovc_sheet import SovcSheet
 
 class SovcDb():
     """Manage SOVC Database (sqlite3 format)"""
+    fixed_choices = set(['OVER VOTES', 'UNDER VOTES', 'WRITE-IN'])
+
     def __init__(self, dbfile):
         self.dbfile = dbfile
         self.source = None
@@ -89,33 +91,44 @@ SOVC Database Summary:
         cur.execute('INSERT INTO source VALUES (?)', (csvfile,))
         
         (race_list, choice_list) = sovcsheet.get_race_lists()
+        #!print('DBG: race_list={}'.format(pformat(race_list)))
         self.insert_race_list(race_list)
         self.insert_choice_list(choice_list)
+        self.insert_common_choice_list(race_list)
 
         (precinct_list, vote_list) = sovcsheet.get_precinct_votes()
         self.insert_precinct_list(precinct_list)        
         self.insert_vote_list(vote_list)        
 
         self.close()
-        logging.debug('DBG: Created RACE and CHOICE tables in {}'
-                      .format(self.dbfile))
-
-        sovcsheet.summary()
+        #!logging.debug('DBG: Created RACE and CHOICE tables in {}'
+        #!              .format(self.dbfile))
+        #!sovcsheet.summary()
         
     def insert_race_list(self, race_list):
         """race_list:: [(race_id, title, num_to_vote_for), ...]"""
         cur = self.conn.cursor()
         cur.executemany('INSERT INTO race VALUES (?,?,?)', race_list)
-        
+
     def insert_choice_list(self, choice_list):
         """choice_list:: [(choice_id, title, race_id, party), ...]"""
         cur = self.conn.cursor()
-        cur.executemany('INSERT INTO choice VALUES (?,?,?,?)', choice_list)
+        for (cid, title, rid, party) in choice_list:
+            if title not in self.fixed_choices:
+                cur.execute('INSERT INTO choice VALUES (?,?,?,?)',
+                            (cid, title, rid, party))
+        
+    def insert_common_choice_list(self, race_list):
+        cur = self.conn.cursor()
+        for (race_id,ti,num) in race_list:
+            for choice_title in self.fixed_choices:
+                cur.execute('INSERT INTO choice VALUES (?,?,?,?)',
+                            (None, choice_title, race_id, None))
         
     def insert_precinct_list(self, precinct_list):
         """
         precinct_list::
-        [(race_id, 
+        [(-- race_id, # choice_id links to race_id
           choice_id,
           county_number,
           precinct_code,
@@ -125,9 +138,9 @@ SOVC Database Summary:
           ballots_cast_blank,
           ), ...]"""
         #!print('DBG: precinct_list=')
-        #!pprint.pprint(precinct_list)
+        #!pprint(precinct_list)
         cur = self.conn.cursor()
-        cur.executemany('INSERT INTO precinct VALUES (?,?,?,?,?,?,?,?)',
+        cur.executemany('INSERT INTO precinct VALUES (?,?,?,?,?,?,?)',
                         precinct_list)
     
     def insert_vote_list(self, vote_list):
@@ -181,7 +194,6 @@ SOVC Database Summary:
 
 def main():
     "Parse command line arguments and do the work."
-    #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='My shiny new python program',
         epilog='EXAMPLE: %(prog)s a b"'

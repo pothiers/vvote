@@ -1,4 +1,4 @@
-##############################################################################
+#############################################################################
 ### LVR
 ###
 lvr_schema = '''
@@ -22,8 +22,12 @@ CREATE TABLE cvr (
 );
 CREATE TABLE vote (
    cvr_id integer,
-   -- race_id integer,
    choice_id integer
+);
+CREATE TABLE summary_totals (
+   race text,
+   choice text,
+   votes integer
 );
 '''
 
@@ -66,7 +70,18 @@ WHERE vote.cvr_id = cvr.cvr_id
 GROUP BY pc, rt, ct
 ORDER BY CAST(pc AS INTEGER), rt, ct; '''
 
+# Count of votes by RaceId, ChoiceId
 lvr_total_votes = '''
+SELECT 
+  choice.race_id,
+  choice.choice_id,
+  count(vote.cvr_id) as votes
+FROM vote, choice
+WHERE vote.choice_id = choice.choice_id
+GROUP BY choice.choice_id;'''
+
+
+SLOW_lvr_total_votes = '''
 attach 'MAP.db' as db2;
 SELECT 
   db2.race_map.sovc_race_title as rt, 
@@ -84,7 +99,7 @@ WHERE
 GROUP BY rt, ct
 ORDER BY rt, ct; '''
 
-##############################################################################
+###################################################################
 ### SOVC
 ###
 sovc_schema = '''
@@ -103,10 +118,10 @@ CREATE TABLE choice (
    party text
 );
 CREATE TABLE precinct (
-  race_id integer,
+  -- race_id integer,
   choice_id integer,
   county_number,
-  precinct_code integer,  -- id
+  precinct_code,  -- id
   precinct_name,
   registered_voters integer,
   ballots_cast_total integer,

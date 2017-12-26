@@ -111,7 +111,7 @@ Sheet Summary:
             choice_id = self.choiceLut[choicetitle]
             for row in range(self.minDataR, self.max_row+1):
                 precinct_list.append(
-                    (race_id,
+                    (# race_id,
                      choice_id,
                      self.cells[row][1],   # county number
                      self.cells[row][2],   # precinct code

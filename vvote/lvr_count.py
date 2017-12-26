@@ -8,29 +8,57 @@ see also: lvr_db.py
 import sys
 import argparse
 import logging
-
-
+import sqlite3
+from pprint import pprint,pformat
+from .mapping_db import MapDb
+from . import sql
     
-def my_func(arg1, arg2):
-    """The work-horse function."""
-    return(arg1, arg2)
+def lvr_count_and_map(lvrdb, mapdb):
+    """Count total votes in LVR (per choice), map to SOVC names."""
+    mdb = MapDb(mapdb)
+    mdb.load_lvr_sovc_luts()
+    cur = sqlite3.connect(mapdb).cursor()
+    raceMap = dict() # raceMap[lvrRaceId] => sovcRaceId
+    for (conf,lrid,lti,srid,sti) in cur.execute(sql.race_map):
+        raceMap[lrid] = srid
+    choiceMap = dict() # choiceMap[lvrChoiceId] => sovcChoiceId
+    for (conf,lrid,lcid,lti,scid,sti) in cur.execute(sql.choice_map):
+        choiceMap[lcid] = scid
 
+    con = sqlite3.connect(lvrdb)
+    cur1 = con.cursor()
+    cur2 = con.cursor()
+    for (rid,cid,votes) in cur1.execute(sql.lvr_total_votes):
+        if votes == 0: continue
+        cur2.execute('INSERT INTO summary_totals VALUES (?,?,?)',
+                     (mdb.sovc_rlut[raceMap[rid]],
+                      mdb.sovc_clut[choiceMap[cid]],
+                      votes))
+    con.commit()
+    con.close()
+            
 
 
 ##############################################################################
 
 def main():
     "Parse command line arguments and do the work."
-    print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='My shiny new python program',
-        epilog='EXAMPLE: %(prog)s a b"'
+        epilog='EXAMPLE: %(prog)s "'
         )
+    dfldb='LVR.db'
+    dfmdb='MAP.db'
+    dftot='lvr_totals.csv'
     parser.add_argument('--version', action='version', version='1.0.1')
-    parser.add_argument('infile', type=argparse.FileType('r'),
-                        help='Input file')
-    parser.add_argument('outfile', type=argparse.FileType('w'),
-                        help='Output output')
+    parser.add_argument('--lvrdb', '-l',
+                        help='LVR sqlite DB')
+    parser.add_argument('--mapdb', '-m', 
+                        default=dfmdb,
+                        help='MAP sqlite DB')
+    parser.add_argument('--totals', '-t', 
+                        default=dftot,
+                        help='CSV of total votes in LVR (mapped to SOVC names)')
 
     parser.add_argument('--loglevel',
                         help='Kind of diagnostic output',
@@ -38,11 +66,6 @@ def main():
                                  'INFO', 'DEBUG'],
                         default='WARNING')
     args = parser.parse_args()
-    #!args.outfile.close()
-    #!args.outfile = args.outfile.name
-
-    #!print 'My args=',args
-    #!print 'infile=',args.infile
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -52,7 +75,8 @@ def main():
                         datefmt='%m-%d %H:%M')
     logging.debug('Debug output is enabled in %s !!!', sys.argv[0])
 
-    my_func(args.infile, args.outfile)
+    lvr_count_and_map(args.lvrdb, args.mapdb)
+    print('Wrote LVR summary totals into: {}'.format(args.lvrdb))
 
 if __name__ == '__main__':
     main()

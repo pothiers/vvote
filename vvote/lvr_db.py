@@ -26,6 +26,7 @@ from .lvr_sheet import LvrSheet
 
 class LvrDb():
     """Manage LVR Database (sqlite3 format)"""
+    fixed_choices = ['overvote', 'undervote', 'Write-in']
     
     def __init__(self, dbfile):
         self.dbfile = dbfile
@@ -70,6 +71,17 @@ LVR Database Summary:
            len(va_choice_list),
            ','.join([str(v) for v in va_choice_list]),  ))
 
+    def insert_fixed_choices(self, race_id, choiceInvLut):
+        """Choices for ALL races, all elections: over/undervote, write-in.
+choiceInvLut :: lut[choiceTitle] => choiceId; MODIFIED IN PLACE
+"""
+        cur = self.conn.cursor()
+        for choice_title in self.fixed_choices:
+            cur.execute('INSERT INTO choice VALUES (?,?,?)',
+                        (None, choice_title, race_id))
+            choice_id = cur.lastrowid
+            choiceInvLut[choice_title] = choice_id
+        
     def insert_from_csv(self,csvfile):
         """Append to existing Sqlite DB."""
         self.new_db(overwrite=True)
@@ -91,6 +103,7 @@ LVR Database Summary:
             self.raceLut[raceC] = raceId
             #!print('DBG: INSERT (race_id, votesAllowed, title) = ({},{},{})'
             #!      .format(rid, sheet.voteFor[racename], racename))
+            self.insert_fixed_choices(raceId, choiceInvLut)
         # INSERT choices, cvr, vote
         for r in range(sheet.minDataR, sheet.max_row + 1):
             cvr_id = cells[r][1]
@@ -114,7 +127,6 @@ LVR Database Summary:
                     
                 cur.execute('INSERT INTO vote VALUES (?,?)',
                             (cvr_id, choiceInvLut[choice_title]))
-
         print('Added CSV ({}) content to LVR database {}'
               .format(csvfile, self.dbfile))
         self.conn.commit()
