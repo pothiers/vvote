@@ -20,3 +20,7 @@ more help.
 After installing (from master branch), you should always be able to execute
 "tests/smoke/smoke.all.sh" and get a message: "ALL smoke tests PASSED".
 If not, there is a problem and it should be reported.
+
+
+I suggest using Anaconda (https://docs.anaconda.com/) to install lots
+of python goodies including data analysis packages.
