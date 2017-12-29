@@ -3,7 +3,6 @@
 
 out=/data/vvote/Elections/G2016/OUTPUT
 
-echo "NB: Removed records for: OVER VOTES, UNDER VOTES, WRITE-IN"
 
 pushd $out
 ####################################################################
@@ -14,6 +13,7 @@ echo "Count total votes from LVR per (Race,Choice). NO MAPPING to SOVC names"
 sqlite3 -header -csv $out/LVR.db > $out/lvr.total_votes.csv <<EOF
 SELECT race as rt, choice as ct, votes
 FROM summary_totals
+GROUP BY rt, ct
 ORDER BY rt, ct;
 EOF
 

@@ -30,7 +30,7 @@ from .sovc_sheet import SovcSheet
 
 class SovcDb():
     """Manage SOVC Database (sqlite3 format)"""
-    fixed_choices = set(['OVER VOTES', 'UNDER VOTES', 'WRITE-IN'])
+    #fixed_choices = set(['OVER VOTES', 'UNDER VOTES', 'WRITE-IN'])
 
     def __init__(self, dbfile):
         self.dbfile = dbfile
@@ -94,7 +94,8 @@ SOVC Database Summary:
         #!print('DBG: race_list={}'.format(pformat(race_list)))
         self.insert_race_list(race_list)
         self.insert_choice_list(choice_list)
-        self.insert_common_choice_list(race_list)
+        # common choices are cooked into SOVC headers
+        #@@@ self.insert_common_choice_list(race_list)
 
         (precinct_list, vote_list) = sovcsheet.get_precinct_votes()
         self.insert_precinct_list(precinct_list)        
@@ -113,17 +114,7 @@ SOVC Database Summary:
     def insert_choice_list(self, choice_list):
         """choice_list:: [(choice_id, title, race_id, party), ...]"""
         cur = self.conn.cursor()
-        for (cid, title, rid, party) in choice_list:
-            if title not in self.fixed_choices:
-                cur.execute('INSERT INTO choice VALUES (?,?,?,?)',
-                            (cid, title, rid, party))
-        
-    def insert_common_choice_list(self, race_list):
-        cur = self.conn.cursor()
-        for (race_id,ti,num) in race_list:
-            for choice_title in self.fixed_choices:
-                cur.execute('INSERT INTO choice VALUES (?,?,?,?)',
-                            (None, choice_title, race_id, None))
+        cur.executemany('INSERT INTO choice VALUES (?,?,?,?)',choice_list)
         
     def insert_precinct_list(self, precinct_list):
         """

@@ -29,7 +29,7 @@ from . import sql
 class MapDb():
     """Manage Map database (sqlite3 format).  It provides tables to map 
 Race and Choice titles from LVR strings to SOVC strings."""
-
+    # Some of these are impossible for some Contests (no "write-in" for yes/no)
     fixed_mapping = [
         # LVR,        SOVC
         ('overvote', 'OVER VOTES'),
@@ -160,14 +160,13 @@ Race and Choice titles from LVR strings to SOVC strings."""
             #!      .format(self.lvr_rlut[lvrRaceId],
             #!               self.text_cidmap(cidmap)))
 
-        print('Missing {} LVR races'.format(missing))
         self.con.commit()
         self.con.close()
 
 
     def insert_race_map(self,raceIdMap):
         for (conf, lvr_id, sovc_id) in raceIdMap:
-            lvr_title = self.lvr_rlut[lvr_id] if lvr_id else '<none>'
+            lvr_title = self.lvr_rlut.get(lvr_id, '<none>')
             sovc_title = self.sovc_rlut[sovc_id] if sovc_id else '<none>'
             self.con.execute('INSERT INTO race_map VALUES (?,?,?,?,?)',
                              (conf, lvr_id, lvr_title, sovc_id, sovc_title))
@@ -186,19 +185,13 @@ Race and Choice titles from LVR strings to SOVC strings."""
     def gen_map_by_matchblocks(self, cleaned_lvr_items, sovc_items,
                                lvr_raceid=None,
                                sovc_raceid=None ):
-        """
-lvr_items :: [(id,title), ...]
-RETURN  idmap:: [(conf, lvr_id, sovc_id), ...]"""
-        if lvr_raceid != None:
-            # lvrInv[title] => id
-            lvrInv = dict([(self.lvr_clut[cid],cid)
-                           for cid in self.lvr_rclut[lvr_raceid]])
-            sovcInv = dict([(self.sovc_clut[cid],cid)
-                           for cid in self.sovc_rclut[sovc_raceid]])
-            idmap = [(1.0, lvrInv[lvr], sovcInv[sovc])
-                     for (lvr,sovc) in self.fixed_mapping]
-        else:
-            idmap = list()
+        """Generate LVR=>SOVC title mapping. 
+For CHOICE map (if lvr_raceid provided), ignore fixed_mapping choices. They 
+will be added later.
+  lvr_items :: [(id,title), ...]
+  RETURN:  idmap:: set([(conf, lvr_id, sovc_id), ...])"""
+        idmap = set()
+        #!print('DBG: init idmap=',pformat(idmap))
         fixed_lvr,fixed_sovc = zip(*self.fixed_mapping)
         lvr_items = [(id,title) for (id,title) in cleaned_lvr_items
                      if (title not in fixed_lvr)]
@@ -219,7 +212,7 @@ RETURN  idmap:: [(conf, lvr_id, sovc_id), ...]"""
                 sovc_id = jid[sovc_idx+offset]
                 lvr_unmapped.discard(lvr_id)
                 sovc_unmapped.discard(sovc_id)
-                idmap.append((1.0, lvr_id, sovc_id))
+                idmap.add((1.0, lvr_id, sovc_id))
         lvr_lut = dict(cleaned_lvr_items)
         sovc_lut = dict(sovc_items)
         bestlvr = None
@@ -234,16 +227,27 @@ RETURN  idmap:: [(conf, lvr_id, sovc_id), ...]"""
                     bestsovc = sovc_id
             lvr_unmapped.discard(bestlvr)
             sovc_unmapped.discard(bestsovc)
-            idmap.append((bestconf, bestlvr, bestsovc))
+            idmap.add((bestconf, bestlvr, bestsovc))
         # If any LVR ids were not paired up, map them to NONE
         for lvr_id in lvr_unmapped:
-            idmap.append((0, lvr_id, None))
+            idmap.add((0, lvr_id, None))
         for sovc_id in sovc_unmapped:
-            idmap.append((0, None, sovc_id))
+            idmap.add((0, None, sovc_id))
 
-        #!print('DBG-2: Num unmappedLVR={}, unmappedSOVC={}'
-        #!      .format(len(lvr_unmapped), len(sovc_unmapped)))
-        return idmap
+        #### Add fixed_map for choices (WRITE-IN, etc.)
+        if lvr_raceid != None:  
+            # rcinv[choiceTitle] = choiceId
+            lvr_rcinv = dict([(self.lvr_clut[cid],cid)
+                              for cid in self.lvr_rclut[lvr_raceid]])
+            sovc_rcinv = dict([(self.sovc_clut[cid],cid)
+                              for cid in self.sovc_rclut[sovc_raceid]])
+            for (lvr_title,sovc_title) in self.fixed_mapping:
+                lvr_id = lvr_rcinv.get(lvr_title, None)
+                sovc_id = sovc_rcinv.get(sovc_title, None)
+                if lvr_id and sovc_id:
+                    idmap.add((1, lvr_id, sovc_id))
+        
+        return idmap # set([(conf, lvr_id, sovc_id), ...])
         
     
     def export(self, racemap_csv='RACEMAP.csv', choicemap_csv='CHOICEMAP.csv' ):
@@ -303,15 +307,16 @@ RETURN  idmap:: [(conf, lvr_id, sovc_id), ...]"""
             raise Exception('LId ({}) not in LVR choice list for race ({}).'
                             .format(lid,lraceid))
 
-        sid = int(row['SId'])
-        stitle = row['STitle']
-        if sid not in self.sovc_clut:
-            raise Exception('SId ({}) not in SOVC choices per DB.'
-                            .format(sid))
-        if self.sovc_clut[sid] != stitle:
-            raise Exception(('SId ({}) and STitle ({}) do not correspond'
-                             ' in DB ({}).')
-                            .format(sid, stitle, self.mapdb))
+        if (row['SId'] != None) and (row['SId'] != ''):
+            sid = int(row['SId'])
+            stitle = row['STitle']
+            if sid not in self.sovc_clut:
+                raise Exception('SId ({}) not in SOVC choices per DB.'
+                                .format(sid))
+            if self.sovc_clut[sid] != stitle:
+                raise Exception(('SId ({}) and STitle ({}) do not correspond'
+                                 ' in DB ({}).')
+                                .format(sid, stitle, self.mapdb))
         #!if sid not in self.sovc_rclut[lraceid]
         #!    raise Exception('SId ({}) not in SOVC choice list for race ({}).'
         #!                    .format(sid,lraceid))
@@ -324,7 +329,8 @@ RETURN  idmap:: [(conf, lvr_id, sovc_id), ...]"""
         new  = dict() # new [(raceId,lvrChoiceId,LvrChoiceTitl)=(conf, sid, sti)
         for (conf,lrid, lid,lti,sid,sti) in self.con.execute(sql.choice_map):
             lidval = None if lid == None else int(lid)
-            orig[(int(lrid), lidval, lti)] = (float(conf), int(sid), sti)
+            #orig[(int(lrid), lidval, lti)] = (float(conf), int(sid), sti)
+            orig[(lrid, lidval, lti)] = (conf, sid, sti)
         errors = 0
         with open(choicemap_csv) as csvfile:
             for row in csv.DictReader(csvfile, dialect='excel'):

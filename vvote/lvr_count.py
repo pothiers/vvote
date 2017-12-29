@@ -28,7 +28,7 @@ def lvr_count_and_map(lvrdb, mapdb):
     con = sqlite3.connect(lvrdb)
     cur1 = con.cursor()
     cur2 = con.cursor()
-    for (rid,cid,votes) in cur1.execute(sql.lvr_total_votes):
+    for (rid,cid,ctitle,votes) in cur1.execute(sql.lvr_total_votes):
         if votes == 0: continue
         cur2.execute('INSERT INTO summary_totals VALUES (?,?,?)',
                      (mdb.sovc_rlut[raceMap[rid]],

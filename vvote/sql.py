@@ -46,7 +46,7 @@ WHERE race.race_id = choice.race_id;'''
 # Votes
 lvr_vote = '''SELECT  
   -- vote.race_id as rid, 
-  vote.choice_id as cid, 
+   vote.choice_id as cid, 
   cvr.precinct_code as pc
 FROM vote, cvr WHERE vote.cvr_id = cvr.cvr_id
 ;'''
@@ -75,6 +75,7 @@ lvr_total_votes = '''
 SELECT 
   choice.race_id,
   choice.choice_id,
+  choice.title,
   count(vote.cvr_id) as votes
 FROM vote, choice
 WHERE vote.choice_id = choice.choice_id

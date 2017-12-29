@@ -25,4 +25,6 @@ ORDER BY race.title ;
 SELECT race.title, choice.title FROM choice, race
 WHERE race.race_id = choice.race_id ORDER BY race.title;
 
-
+-- Count number of races that use same choice.title.
+-- LVR.db
+SELECT choice.title,count(choice.race_id) FROM choice ORDER BY choice.race_id;

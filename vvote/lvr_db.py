@@ -71,7 +71,9 @@ LVR Database Summary:
            len(va_choice_list),
            ','.join([str(v) for v in va_choice_list]),  ))
 
-    def insert_fixed_choices(self, race_id, choiceInvLut):
+    # Do not due this.  Data may contain these choices. If so, there
+    # end up being two choice_ids for same choice_title
+    def OBSOLETE_insert_fixed_choices(self, race_id, choiceInvLut):
         """Choices for ALL races, all elections: over/undervote, write-in.
 choiceInvLut :: lut[choiceTitle] => choiceId; MODIFIED IN PLACE
 """
@@ -91,7 +93,8 @@ choiceInvLut :: lut[choiceTitle] => choiceId; MODIFIED IN PLACE
         cells = sheet.cells
 
         choices = defaultdict(set) # of choice_title for each race
-        choiceInvLut = dict() # lut[choiceTitle] => choiceId
+        #
+        choiceInvLut = dict() # lut[(raceId,choiceTitle)] => choiceId
         
         cur.execute('INSERT INTO source VALUES (?)', (csvfile,))
 
@@ -103,7 +106,7 @@ choiceInvLut :: lut[choiceTitle] => choiceId; MODIFIED IN PLACE
             self.raceLut[raceC] = raceId
             #!print('DBG: INSERT (race_id, votesAllowed, title) = ({},{},{})'
             #!      .format(rid, sheet.voteFor[racename], racename))
-            self.insert_fixed_choices(raceId, choiceInvLut)
+            #@@@ self.insert_fixed_choices(raceId, choiceInvLut)
         # INSERT choices, cvr, vote
         for r in range(sheet.minDataR, sheet.max_row + 1):
             cvr_id = cells[r][1]
@@ -119,14 +122,14 @@ choiceInvLut :: lut[choiceTitle] => choiceId; MODIFIED IN PLACE
                 choice_title = cells[r].get(c,None)
                 if choice_title == None: continue
 
-                if choice_title not in choiceInvLut:
+                if (race_id,choice_title) not in choiceInvLut:
                     cur.execute('INSERT INTO choice VALUES (?,?,?)',
                                 (None, choice_title, race_id))
                     choice_id = cur.lastrowid
-                    choiceInvLut[choice_title] = choice_id
+                    choiceInvLut[(race_id,choice_title)] = choice_id
                     
                 cur.execute('INSERT INTO vote VALUES (?,?)',
-                            (cvr_id, choiceInvLut[choice_title]))
+                            (cvr_id, choiceInvLut[(race_id,choice_title)]))
         print('Added CSV ({}) content to LVR database {}'
               .format(csvfile, self.dbfile))
         self.conn.commit()
