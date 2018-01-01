@@ -86,6 +86,8 @@ Type TAB after partial command for cmd completion.
     def do_ingest_lvr(self, lvr_csv):
         'Ingest LVR CSV file into its own sqlite database.'
         db = LvrDb(self.lvrdb)
+        print('Ingesting CSV file ({}) into database ({})'
+              .format(lvr_csv, self.lvrdb))
         db.insert_from_csv(lvr_csv)
         
     # sovcdb --database $out/SOVC.db --incsv $out/export9.sovc.csv 
@@ -179,7 +181,7 @@ ORDER BY rt, ct;'''
 
         print('Tally LVR votes into LVR.db')
         self.do_tally_lvr(dummy)
-        self.do_compare_totals(dummy)
+        self.do_compare_totals(str(self.datadir / 'diff.html'))
 
     def do_quit(self, arg):
         'Quit vvote Command Line Interpreter'
