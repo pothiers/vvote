@@ -2,6 +2,7 @@
 Read CSV ballot file (LVR) into object representing a spreadsheet
 as cells[row][column]=cellValue plus other bookkeeping instance variables.
 """
+
 from collections import defaultdict
 import csv
 

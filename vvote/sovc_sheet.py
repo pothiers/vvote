@@ -1,6 +1,7 @@
 """\
-Read CSV SOVC file into object representing a spreadsheet
-as cells[row][column]=cellValue plus other bookkeeping instance variables.
+Read CSV SOVC file into object representing a spreadsheet.
+
+Model as cells[row][column]=cellValue plus other bookkeeping instance variables.
 """
 import logging
 from collections import defaultdict

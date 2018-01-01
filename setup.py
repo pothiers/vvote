@@ -87,18 +87,20 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'countvote=vvote.vvote:main',
-            'sovc=vvote.sovc:main',
-            'sovcdb=vvote.sovc_db:main',
+            #'countvote=vvote.vvote:main',
+            #'sovc=vvote.sovc:main',
+            #'lvr=vvote.lvr:main',
+            #'transpose=vvote.transpose:main',
+            #'genmap=vvote.mapping:main',
+            #'compare=vvote.comparesovc:main',
+
+            'xls2csv=vvote.xlsx2csv:main',
             'lvrdb=vvote.lvr_db:main',
             'lvrcnt=vvote.lvr_count:main',
             'lvr2csv=vvote.lvr_db_csv:main',
+            'sovcdb=vvote.sovc_db:main',
             'makemapdb=vvote.mapping_db:main',
-            'lvr=vvote.lvr:main',
-            'transpose=vvote.transpose:main',
-            'genmap=vvote.mapping:main',
-            'xls2csv=vvote.xlsx2csv:main',
-            'compare=vvote.comparesovc:main',
+            'cli=vvote.cli:main',
         ],
     },
 )

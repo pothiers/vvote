@@ -1,7 +1,13 @@
 #! /usr/bin/env python
-"""Output LVR db as CSV (in Election System format)
+"""Output LVR db as CSV (in Election System format).
+
+The output may not match the election system exactly.  The purpose of
+the output is to allow a spreadsheet to be used to look at full
+content in a way that looks similar enough to the input.
+
 EXAMPLE:
   lvr2csv --skip 2000  LVR.db lvr.csv
+
 """
 # Docstrings intended for document generation via pydoc
 

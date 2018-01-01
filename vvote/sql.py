@@ -1,3 +1,7 @@
+"""\
+SQL commands (possibly) used in the python code.
+"""
+
 #############################################################################
 ### LVR
 ###
@@ -75,7 +79,7 @@ lvr_total_votes = '''
 SELECT 
   choice.race_id,
   choice.choice_id,
-  choice.title,
+  choice.title,     -- debugging aid
   count(vote.cvr_id) as votes
 FROM vote, choice
 WHERE vote.choice_id = choice.choice_id

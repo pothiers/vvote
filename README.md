@@ -1,6 +1,10 @@
 # vvote [![Build Status](https://travis-ci.org/pothiers/vvote.svg?branch=master)](https://travis-ci.org/pothiers/vvote)
 Vote counting and data validation
 
+For automatic documentation try:
+: pydoc3.5 -b
+
+
 Given XSL file representing data from ballots: count votes for
 multiple races, handle out-of-district, overvote, undervote, write-in,
 handle various edge cases.

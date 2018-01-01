@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 """Manage SOVC database.
+
 - Load from Official Election Results excel file(s).
-- Export as CSV. 
 
 SOVC :: Statement Of Votes Cast; official election results
 
@@ -45,12 +45,12 @@ class SovcDb():
         if overwrite:
             if os.path.exists(dbfile):
                 os.remove(dbfile)
-                print('Removed SOVC database: {}'.format(dbfile))
+                #! print('Removed SOVC database: {}'.format(dbfile))
 
         self.conn = sqlite3.connect(dbfile)
         cur = self.conn.cursor()
         cur.executescript(sql.sovc_schema)
-        print('Created schema in SOVC database: {}'.format(dbfile))
+        #print('Created schema in SOVC database: {}'.format(dbfile))
         self.conn.commit()
 
     def close(self):
@@ -128,8 +128,6 @@ SOVC Database Summary:
           ballots_cast_total,
           ballots_cast_blank,
           ), ...]"""
-        #!print('DBG: precinct_list=')
-        #!pprint(precinct_list)
         cur = self.conn.cursor()
         cur.executemany('INSERT INTO precinct VALUES (?,?,?,?,?,?,?)',
                         precinct_list)

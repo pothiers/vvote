@@ -1,3 +1,7 @@
+"""\
+Collection of Exceptions for vvote.
+"""
+
 import logging
 
 class BadSovc(Exception):

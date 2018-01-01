@@ -1,5 +1,6 @@
 #! /usr/bin/env python
-"""Creating mapping between Race and Choice strings in LVR and SOVC.
+"""\
+Create mapping between Race and Choice strings in LVR and SOVC.
 
 EXAMPLES:
   makemapdb LVR.db SOVC.db -m MAP.db
@@ -17,10 +18,10 @@ from itertools import product
 
 from difflib import SequenceMatcher
 from pprint import pprint,pformat
-import copy
 import csv
 from collections import defaultdict
 
+from . import clean 
 from . import sql
 
 ##############################################################################
@@ -49,10 +50,10 @@ Race and Choice titles from LVR strings to SOVC strings."""
         self.sovc_clut = dict() # lut[choiceId] => choiceTitle
         self.sovc_rclut = defaultdict(list) # lut[raceId] => [choiceId, ...]
         if new:
-            print('Creating new map db: {}'.format(mapdb))
+            #print('Creating new map db: {}'.format(mapdb))
             if os.path.exists(mapdb):
                 os.remove(mapdb)
-                print('Removed existing MAP database: {}'.format(mapdb))
+                #print('Removed existing MAP database: {}'.format(mapdb))
                 self.con = sqlite3.connect(mapdb)
             self.con.executescript(sql.map_schema)
             self.con.execute('INSERT INTO source VALUES(?,?,?,?)',
@@ -119,6 +120,8 @@ Race and Choice titles from LVR strings to SOVC strings."""
         self.get_sovc_luts(self.sovcdb)
         
     def calc(self):
+        print('(re)Calculating mapping from map data')
+
         self.load_lvr_sovc_luts()
         self.con = sqlite3.connect(self.mapdb)
         
@@ -127,7 +130,7 @@ Race and Choice titles from LVR strings to SOVC strings."""
 
         ### Compare Races of LVR,SOVC
         # ridmap:: [(conf, lvr_id, sovc_id,), ...]
-        ridmap = self.gen_map_by_matchblocks(clean_races(self.lvr_rlut),
+        ridmap = self.gen_map_by_matchblocks(clean.clean_races(self.lvr_rlut),
                                              self.sovc_rlut.items() )
         #! print('ridmap(conf,lvrid,sovcid)=',ridmap)
         lvrmaplist = [lvrid for (c,lvrid,sovcid) in ridmap]
@@ -150,7 +153,7 @@ Race and Choice titles from LVR strings to SOVC strings."""
             sovc_lut = dict([(cid, self.sovc_clut[cid])
                              for cid in self.sovc_rclut[sovcRaceId]])
             # cidmap:: [(conf, lvr_id, sovc_id), ...]
-            cidmap = self.gen_map_by_matchblocks(clean_choices(lvr_lut),
+            cidmap = self.gen_map_by_matchblocks(clean.clean_choices(lvr_lut),
                                                  sovc_lut.items(),
                                                  lvr_raceid=lvrRaceId,
                                                  sovc_raceid=sovcRaceId )
@@ -364,60 +367,6 @@ will be added later.
         self.con.commit()
 
 
-# Normalize differentces between LVR and SOVC choices
-# LVR may contain unicode
-def clean_races(lut):
-    """Normalize dict of races.  
-lut[raceId] => newRaceTitle
-RETURN: [(raceId,newRaceTitle), ...];  Sorted by TITLE.
-"""
-    newlut = copy.copy(lut) # newlut[cid] => title
-    #
-    # (no change)
-    #
-    return sorted(newlut.items(), key=lambda x: x[1])    
-
-def rem_party(name):
-    """Remove Party prefix from start of name."""
-    party_prefixs = ['DEM ', 'REP ', 'GRN ', 'LBT ']
-    if name[:4] in party_prefixs:
-        return name[4:]
-    else:
-        return name
-
-# Normalize differentces between LVR and SOVC choices
-# LVR may contain unicode
-def clean_choices(lut):
-    """Normalize dict of choices.
-lut[choiceId] => newChoiceTitle
-RETURN: [(choiceId,newChoiceTitle), ...];  Sorted by TITLE.
-"""
-    newlut = copy.copy(lut) # newlut[cid] => title
-    # remove chars: parens, double-quotes
-    nukechars = str.maketrans(dict.fromkeys('()"'))
-    repstrs = [
-        #LVR        SOVC
-        ('Á',        'A'),
-        ('Í',        'I'),
-        ('Ó',        'O'),
-        ('Ú',        'U'),
-        ('YES/SÍ',   'YES'),
-        ('YES/Sí',   'YES'),
-        ('YES/SI',   'YES'),
-    ]
-    #! ('overvote', 'OVER VOTES'),
-    #! ('undervote','UNDER VOTES'),
-    #! ('Write-in', 'WRITE-IN'),
-
-    for k in lut.keys():
-        newlut[k] = rem_party(newlut[k])
-        newlut[k] = newlut[k].translate(nukechars)
-        for (a,b) in repstrs:
-            newlut[k] = newlut[k].replace(a,b)
-    return sorted(newlut.items(), key=lambda x: x[1])
-
-    
-
 def similar(lvr,sovc):
     "Symetric similarity [0,1].  1.0 for identical."
     if (lvr == None) or (sovc == None):
@@ -484,21 +433,13 @@ def main():
 
     mdb = MapDb(args.mapdb, new=args.new)
     
-    #!if args.lvrdb and args.sovcdb:
-    #!    print('Overwriting map data in "{}" from contents of "{}", "{}"'
-    #!          .format(args.mapdb, args.lvrdb, args.sovcdb))
-    #!    gen_mapping(args.lvrdb, args.sovcdb, args.mapdb)
     if args.lvrdb:
         mdb.get_lvr_luts(args.lvrdb)
     if args.sovcdb:
         mdb.get_sovc_luts(args.sovcdb)
 
     if args.calc:
-        print('(re)Calculating mapping from map data')
         mdb.calc()
-#!    if args.pretty:
-#!        print('Printing current mapping')
-#!        printmap()
     if args.exportmaps:
         mdb.export()
     if args.importmaps:

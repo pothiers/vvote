@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 """Manage LVR database.
+
 - Load from Official ballots file(s). Named *LVR*.xlsx or *CVR*.xlsx
-- Export as CSV. 
+  into SQLITE database.
 
 LVR :: List of CVR records (an excel file, each row is CVR except
      header row=1) Each record is the ballot results from one person.
@@ -39,12 +40,12 @@ class LvrDb():
         if overwrite:
             if os.path.exists(dbfile):
                 os.remove(dbfile)
-                print('Removed LVR database: {}'.format(dbfile))
+                #print('Removed LVR database: {}'.format(dbfile))
 
         self.conn = sqlite3.connect(dbfile)
         cur = self.conn.cursor()
         cur.executescript(sql.lvr_schema)
-        print('Created schema in LVR database: {}'.format(dbfile))
+        #print('Created schema in LVR database: {}'.format(dbfile))
         self.conn.commit()
 
     def close_db(self):
@@ -92,8 +93,9 @@ choiceInvLut :: lut[choiceTitle] => choiceId; MODIFIED IN PLACE
         cur = self.conn.cursor()
         cells = sheet.cells
 
+        #print('Inserting LVR CSV content into db: {}'.format(self.dbfile))
+
         choices = defaultdict(set) # of choice_title for each race
-        #
         choiceInvLut = dict() # lut[(raceId,choiceTitle)] => choiceId
         
         cur.execute('INSERT INTO source VALUES (?)', (csvfile,))
@@ -130,8 +132,8 @@ choiceInvLut :: lut[choiceTitle] => choiceId; MODIFIED IN PLACE
                     
                 cur.execute('INSERT INTO vote VALUES (?,?)',
                             (cvr_id, choiceInvLut[(race_id,choice_title)]))
-        print('Added CSV ({}) content to LVR database {}'
-              .format(csvfile, self.dbfile))
+        #! print('Added CSV ({}) content to LVR database {}'
+        #!       .format(csvfile, self.dbfile))
         self.conn.commit()
         self.close_db()
 
@@ -141,7 +143,6 @@ choiceInvLut :: lut[choiceTitle] => choiceId; MODIFIED IN PLACE
 
 def main():
     "Parse command line arguments and do the work."
-    #print('EXECUTING: %s\n\n' % (' '.join(sys.argv)))
     parser = argparse.ArgumentParser(
         description='My shiny new python program',
         epilog='EXAMPLE: %(prog)s a b"'
@@ -177,9 +178,7 @@ def main():
         args.incsv.close()
         args.incsv = args.incsv.name
         db.insert_from_csv(args.incsv)
-        #print('Inserted data from {} into {}'.format(args.incsv, args.database))
         
-    #!foo = 'foo-lvr.csv'
     #!db.to_csv(foo)
     #!print('Created CSV from DB in {}'.format(foo))
     if args.summary:
