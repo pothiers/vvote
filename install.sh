@@ -5,6 +5,7 @@ repodir=${1:-$HOME/sandbox}
 
 pushd $repodir/vvote > /dev/null
 source ~/sandbox/vvote/venv/bin/activate
+pip install -r ~/sandbox/vvote/requirements.txt
 pylint -E vvote/
 pylintstatus=$?
 if [ $pylintstatus -eq 1 ]; then
