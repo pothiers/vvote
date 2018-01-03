@@ -43,6 +43,9 @@ class VvoteShell(cmd.Cmd):
     intro = '''\
 Welcome to the vvote shell.   Type help or ? to list commands.
 Type TAB after partial command for cmd completion.
+
+EXAMPLES:
+full_workflow /data/vvote/Elections/G2016/OUTPUT/day1.lvr.csv /data/vvote/Elections/G2016/OUTPUT/export1.sovc.csv
 '''
     prompt = '(vvote) '
     file = None
@@ -84,23 +87,27 @@ Type TAB after partial command for cmd completion.
     
     # lvrdb --database $out/LVR.db --incsv $out/day9.lvr.csv
     def do_ingest_lvr(self, lvr_csv):
-        'Ingest LVR CSV file into its own sqlite database.'
+        """ingest_lvr lvr_csv
+        Ingest LVR CSV file into its own sqlite database."""
         db = LvrDb(self.lvrdb)
+        csv = os.path.expanduser(lvr_csv)
         print('Ingesting CSV file ({}) into database ({})'
-              .format(lvr_csv, self.lvrdb))
-        db.insert_from_csv(lvr_csv)
+              .format(csv, self.lvrdb))
+        db.insert_from_csv(csv)
         
     # sovcdb --database $out/SOVC.db --incsv $out/export9.sovc.csv 
     def do_ingest_sovc(self, sovc_csv):
-        'Ingest SOVC CSV file into its own sqlite database.'
+        """ingest_sovc sovc_csv
+        Ingest SOVC CSV file into its own sqlite database."""
         db = SovcDb(self.sovcdb)
-        db.insert_from_csv(sovc_csv)
+        db.insert_from_csv(os.path.expanduser(sovc_csv))
 
 
     # makemapdb --new -l $out/LVR.db -s $out/SOVC.db --mapdb $out/MAP.db 
     # makemapdb -m $out/MAP.db --calc
     def do_create_map(self, arg):
-        'Create mapping from LVR to SOVC names (for Races and Choices)'
+        """create_map
+        Create mapping from LVR to SOVC names (for Races and Choices)"""
         mdb = MapDb(self.mapdb, new=True)
         mdb.get_lvr_luts(self.lvrdb)
         mdb.get_sovc_luts(self.sovcdb)
@@ -109,26 +116,30 @@ Type TAB after partial command for cmd completion.
 
     # makemapdb -m $out/MAP.db --export
     def do_export_maps(self, arg):
-        'Export Race and Choice maps for possible editing.'
+        """export_maps
+        Export Race and Choice maps for possible editing."""
         mdb = MapDb(self.mapdb, new=False)
         mdb.export(racemap_csv=self.racemap, choicemap_csv=self.choicemap)
 
 
     # makemapdb -m $out/MAP.db --import RACEMAP.csv CHOICEMAP.csv
     def do_import_maps(self, arg):
-        'Import edited Race and Choice maps.'
+        """import_maps
+        Import edited Race and Choice maps."""
 
         mdb = MapDb(self.mapdb, new=False)
         mdb.load_maps(self.racemap, self.choicemap)
 
     # lvrcnt --lvr $out/LVR.db --map $out/MAP.db
     def do_tally_lvr(self, arg):
-        'Count votes in LVR database.  Store back in database using SOVC names.'
+        """tally_lvr
+        Count votes in LVR database. Store back in database using SOVC names."""
         print('Inserting summary of votes into LVR db. (slow)')
         lvr_count_and_map(self.lvrdb, self.mapdb)
 
-    def do_show_tally(self):
-        'Display previously computed tally ("tally_lvr") of LVR votes.'
+    def do_show_tally(self, arg):
+        """show_tally
+        Display previously computed tally ("tally_lvr") of LVR votes."""
         cur = sqlite3.connect(self.lvrdb).cursor()
         print('{}\t{}\t{}'.format('Race','Choice','Votes'))
         for (race,choice,votes) in cur.execute('SELECT * FROM summary_totals;'):
@@ -137,7 +148,8 @@ Type TAB after partial command for cmd completion.
 
     # ~/sandbox/vvote/scripts/compare.sh
     def do_compare_totals(self, htmlfile):
-        'Compare total votes from LVR to SOVC'
+        """compare_totals htmlfile
+        Compare total votes from LVR to SOVC."""
         sql_lvr = '''SELECT * FROM summary_totals ORDER BY race,choice;'''
         sql_sovc = '''SELECT 
   race.title as rt, 
@@ -165,10 +177,20 @@ ORDER BY rt, ct;'''
             print(html, file=f)
         print('Wrote differences to: {}'.format(htmlfile))
             
-    def do_full_workflow(self, arg):
-        'Do all steps from CSV (LVR,SOVC) Input to Compare. [lvr_csv, sovc.csv]'
-        lvr_csv, sovc_csv = arg.split()
+    def do_full_workflow(self, lvr_sovc):
+        """full_workflow lvr_csv sovc_csv
+        Do all steps from CSV (LVR,SOVC) Input to Compare:
+            ingest_lvr lvr_csv
+            ingest_sovc sovc_csv
+            create_map
+            export_maps
+            import_maps
+            tally_lvr
+            compare_totals diff.html"""
+        lvr_csv, sovc_csv = lvr_sovc.split()
         dummy = ''
+        print('Putting workflow intermediate results in: {}'
+              .format(self.datadir))
 
         print('Ingest {} into LVR.db'.format(lvr_csv))
         self.do_ingest_lvr(lvr_csv)
@@ -184,7 +206,8 @@ ORDER BY rt, ct;'''
         self.do_compare_totals(str(self.datadir / 'diff.html'))
 
     def do_quit(self, arg):
-        'Quit vvote Command Line Interpreter'
+        """quit (or EOF)
+        Quit vvote Command Line Interpreter"""
         print('All done!')
         return True # abort
     do_EOF = do_quit
