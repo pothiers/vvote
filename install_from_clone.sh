@@ -34,3 +34,9 @@ if [ $pylintstatus -gt 0 ]; then
 fi
 
 python3 setup.py install --force --prefix $installprefix
+
+
+echo "VVOTE installed."
+echo "You can now do:"
+echo "  source $repodir/venv/bin/activate"
+echo "  cli"
