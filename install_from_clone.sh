@@ -5,10 +5,9 @@
 #   python3
 #
 SCRIPT=$(readlink -f $0)        # Absolute path to this script
-SCRIPTPATH=$(dirname $SCRIPT)   # Absolute path this script is in
+repodir=$(dirname $SCRIPT)   # Absolute path this script is in
 
-installprefix=$SCRIPT/venv
-repodir=${1:-$SCRIPT}
+installprefix=$repodir/venv
 
 pushd $repodir > /dev/null
 
