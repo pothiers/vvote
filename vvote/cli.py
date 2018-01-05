@@ -34,7 +34,7 @@ from .lvr_db import LvrDb
 from .lvr_count import lvr_count_and_map
 from .sovc_db import SovcDb
 from .mapping_db import MapDb
-
+from .xlsx2csv import xlsx2csv
 
 def compare_totals(lvrdb, sovcdb, lvrtotals, sovctotals, diff):
     pass
@@ -45,7 +45,7 @@ Welcome to the vvote shell.   Type help or ? to list commands.
 Type TAB after partial command for cmd completion.
 
 EXAMPLES:
-full_workflow /data/vvote/Elections/G2016/OUTPUT/day1.lvr.csv /data/vvote/Elections/G2016/OUTPUT/export1.sovc.csv
+full_workflow /data/vvote/Elections/G2016/day-1-cvr.xlsx /data/vvote/Elections/G2016/G2016_EXPORT1.xlsx
 '''
     prompt = '(vvote) '
     file = None
@@ -84,7 +84,12 @@ full_workflow /data/vvote/Elections/G2016/OUTPUT/day1.lvr.csv /data/vvote/Electi
     ###     basic vvote commands
     ###
 
-    
+    def do_excel2csv(self, excel_csv):
+        """excel2csv in_excel_file out_csv_file
+        Convert Excel to CSV file."""
+        excel_file,csv_file     = excel_csv.split()
+        xlsx2csv(excel_file, csv_file)
+
     # lvrdb --database $out/LVR.db --incsv $out/day9.lvr.csv
     def do_ingest_lvr(self, lvr_csv):
         """ingest_lvr lvr_csv
@@ -178,8 +183,10 @@ ORDER BY rt, ct;'''
         print('Wrote differences to: {}'.format(htmlfile))
             
     def do_full_workflow(self, lvr_sovc):
-        """full_workflow lvr_csv sovc_csv
+        """full_workflow lvr_excel sovc_excel
         Do all steps from CSV (LVR,SOVC) Input to Compare:
+            excel2csv lvr_excel lvr_csv
+            excel2csv sovc_excel sovc_csv
             ingest_lvr lvr_csv
             ingest_sovc sovc_csv
             create_map
@@ -187,10 +194,16 @@ ORDER BY rt, ct;'''
             import_maps
             tally_lvr
             compare_totals diff.html"""
-        lvr_csv, sovc_csv = lvr_sovc.split()
+        lvr_excel, sovc_excel = lvr_sovc.split()
         dummy = ''
         print('Putting workflow intermediate results in: {}'
               .format(self.datadir))
+
+        lvr_csv = str(self.datadir / 'LVR.csv')
+        sovc_csv = str(self.datadir / 'SOVC.csv')
+        print('Converting {} and {} to CSV'.format(lvr_excel, sovc_excel))
+        self.do_excel2csv(lvr_excel + ' ' + lvr_csv)        
+        self.do_excel2csv(sovc_excel  + ' ' + sovc_csv)        
 
         print('Ingest {} into LVR.db'.format(lvr_csv))
         self.do_ingest_lvr(lvr_csv)
