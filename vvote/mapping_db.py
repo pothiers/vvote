@@ -15,6 +15,7 @@ import os
 import os.path
 import sqlite3
 from itertools import product
+import traceback
 
 from difflib import SequenceMatcher
 from pprint import pprint,pformat
@@ -255,7 +256,7 @@ will be added later.
     
     def export(self, racemap_csv='RACEMAP.csv', choicemap_csv='CHOICEMAP.csv' ):
         con = sqlite3.connect(self.mapdb)
-        headers = 'Conf,LId,LTitle,SId,Stitle'.split(',')
+        headers = 'Conf,LId,LTitle,SId,STitle'.split(',')
         with open(racemap_csv, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, dialect='excel')
             writer.writerow(headers)
@@ -280,6 +281,42 @@ will be added later.
     # 2. still one-to-one mapping (LVR->SOVC)
     # 3. ChoiceId and Title still match for both LVR an SOVC
     # N. other??
+    # VALIDATE:
+    # 1. all text same as DB (not changed in CSV)
+    # 2. still one-to-one mapping (LVR->SOVC)
+    # 3. RaceId and Title still match for both LVR and SOVC
+    # N. other??
+    def validate_race_row(self, row, orig, new):
+        conf = float(row['Conf'])
+        lid = None if row['LId'] == None else int(row['LId'])
+        ltitle = row['LTitle']
+        
+        key = (lid, ltitle)
+        if not (0.0 <= conf  <= 1.0):
+            raise Exception('Conf ({}) not in range [0.0:1.0]'.format(conf))
+        if key in new:
+            raise Exception('Duplicate LVR entry (LId,LTitle)={}'.format(key))
+        if key not in orig: 
+            raise Exception('LVR entry (LId,LTitle) not in orig={}'.format(key))
+        if lid not in self.lvr_rlut:
+            raise Exception('LId ({}) not in LVR race list.'.format(lid))
+
+        if self.lvr_rlut[lid] != ltitle:
+            raise Exception(('LId ({}) and LTitle ({}) do not correspond'
+                             ' in DB ({}).')
+                            .format(lid, ltitle, self.mapdb))
+
+        if (row['SId'] != None) and (row['SId'] != ''):
+            sid = int(row['SId'])
+            stitle = row['STitle']
+            if sid not in self.sovc_rlut:
+                raise Exception('SId ({}) not in SOVC race list.'.format(sid))
+            if self.sovc_rlut[sid] != stitle:
+                raise Exception(('SId ({}) and STitle ({}) do not correspond'
+                                 ' in DB ({}).')
+                                .format(sid, stitle, self.mapdb))
+        return True
+
     def validate_choice_row(self, row, orig, new):
         conf = float(row['Conf'])
         lraceid = int(row['LRaceId'])
@@ -326,8 +363,45 @@ will be added later.
         return True
         
 
+    def load_race_map(self, racemap_csv='RACEMAP.csv'):
+        orig = dict() # orig[(lvrRaceId,LvrRaceTitl)=(conf, sid, sti)
+        new  = dict() # new [(lvrRaceId,LvrRaceTitl)=(conf, sid, sti)
+        for (conf,lid,lti,sid,sti) in self.con.execute(sql.race_map):
+            lidval = None if lid == None else int(lid)
+            orig[(lidval, lti)] = (conf, sid, sti)
+        errors = 0
+        with open(racemap_csv) as csvfile:
+            for row in csv.DictReader(csvfile, dialect='excel'):
+                if len(row['LId']) == 0: continue
+
+                #!self.validate_race_row(row, orig, new)
+                #!new[(row['LId'],row['LTitle'])] = (
+                #!    row['Conf'], row['SId'], row['STitle'])
+
+                try:
+                    self.validate_race_row(row, orig, new)
+                except Exception as err:
+                    logging.error('Invalid RACE map row: {}; {}'
+                                  .format(row,err))
+                    errors += 1
+                    continue
+                else:
+                    new[(row['LId'],row['LTitle'])] = (
+                        row['Conf'], row['SId'], row['STitle'])
+        if errors == 0:
+            self.con.execute('DELETE from race_map;')
+            for ((lid,ltitle), (conf,sid,stitle)) in new.items():
+                self.con.execute('INSERT INTO race_map VALUES(?,?,?,?,?)',
+                                 (conf, lid, ltitle, sid, stitle))
+            print('RACEMAP imported from: {}'.format(racemap_csv))
+        else:
+            logging.error('NOT importing RACEMAP due to {} errors.'
+                          .format(errors))
+
+
+        
     def load_choice_map(self, choicemap_csv='CHOICEMAP.csv'):
-        self.load_lvr_sovc_luts()
+        #!self.load_lvr_sovc_luts()
         orig = dict() # orig[(raceId,lvrChoiceId,LvrChoiceTitl)=(conf, sid, sti)
         new  = dict() # new [(raceId,lvrChoiceId,LvrChoiceTitl)=(conf, sid, sti)
         for (conf,lrid, lid,lti,sid,sti) in self.con.execute(sql.choice_map):
@@ -354,15 +428,15 @@ will be added later.
             for ((race,lid,ltitle), (conf,sid,stitle)) in new.items():
                 self.con.execute('INSERT INTO choice_map VALUES(?,?,?,?,?,?)',
                                  (conf, race, lid, ltitle, sid, stitle))
-            print('CHOICMAP imported from: {}'.format(choicemap_csv))
+            print('CHOICEMAP imported from: {}'.format(choicemap_csv))
         else:
             logging.error('NOT importing CHOICEMAP due to {} errors.'
                           .format(errors))
                     
     def load_maps(self, racemap_csv, choicemap_csv):
         self.con = sqlite3.connect(self.mapdb)
-        #self.load_race_map(racemap_csv=racemap_csv)
-        print("WARNING: not importing RACEMAP!!!")
+        self.load_lvr_sovc_luts()
+        self.load_race_map(racemap_csv=racemap_csv)
         self.load_choice_map(choicemap_csv=choicemap_csv)
         self.con.commit()
 
