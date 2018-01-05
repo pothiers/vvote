@@ -45,7 +45,7 @@ Welcome to the vvote shell.   Type help or ? to list commands.
 Type TAB after partial command for cmd completion.
 
 EXAMPLES:
-full_workflow /data/vvote/Elections/G2016/day-1-cvr.xlsx /data/vvote/Elections/G2016/G2016_EXPORT1.xlsx
+full_workflow ~/sandbox/vvote/tests/data/day1.lvr.csv ~/sandbox/vvote/tests/data/export1.sovc.csv
 '''
     prompt = '(vvote) '
     file = None
@@ -58,6 +58,8 @@ full_workflow /data/vvote/Elections/G2016/day-1-cvr.xlsx /data/vvote/Elections/G
         self.mapdb = str(self.datadir / 'MAP.db')
         self.racemap = str(self.datadir / 'RACEMAP.csv')
         self.choicemap = str(self.datadir / 'CHOICEMAP.csv')
+        self.htmlfile = str(self.datadir / 'diff.html')
+        self.textfile = str(self.datadir / 'diff.txt')
         
         os.makedirs(str(self.datadir), exist_ok=True)
         super(VvoteShell, self).__init__()
@@ -152,8 +154,8 @@ full_workflow /data/vvote/Elections/G2016/day-1-cvr.xlsx /data/vvote/Elections/G
 
 
     # ~/sandbox/vvote/scripts/compare.sh
-    def do_compare_totals(self, htmlfile):
-        """compare_totals htmlfile
+    def do_compare_totals(self, arg):
+        """compare_totals 
         Compare total votes from LVR to SOVC."""
         sql_lvr = '''SELECT * FROM summary_totals ORDER BY race,choice;'''
         sql_sovc = '''SELECT 
@@ -178,15 +180,23 @@ ORDER BY rt, ct;'''
 
         hd = difflib.HtmlDiff()
         html = hd.make_file(fromlines, tolines, fromdesc='LVR', todesc='SOVR')
-        with open(htmlfile, mode='w') as f:
+        with open(self.htmlfile, mode='w') as f:
             print(html, file=f)
-        print('Wrote differences to: {}'.format(htmlfile))
+        print('Wrote full differences to HTML at: {}'.format(self.htmlfile))
+
+        dif = difflib.Differ()
+        with open(self.textfile, mode='w') as f:
+            for line in dif.compare(fromlines,tolines):
+                if line.startswith('  '): continue
+                if line.startswith('? '): continue
+                if line.endswith(', 0)'): continue
+                print(line, file=f)
+        print('Wrote delta differences to TEXT at: {}'.format(self.textfile))
+
             
     def do_full_workflow(self, lvr_sovc):
         """full_workflow lvr_excel sovc_excel
         Do all steps from CSV (LVR,SOVC) Input to Compare:
-            excel2csv lvr_excel lvr_csv
-            excel2csv sovc_excel sovc_csv
             ingest_lvr lvr_csv
             ingest_sovc sovc_csv
             create_map
@@ -194,16 +204,19 @@ ORDER BY rt, ct;'''
             import_maps
             tally_lvr
             compare_totals diff.html"""
-        lvr_excel, sovc_excel = lvr_sovc.split()
+        # excel2csv lvr_excel lvr_csv
+        # excel2csv sovc_excel sovc_csv
+
+        lvr_csv, sovc_csv = lvr_sovc.split()
         dummy = ''
         print('Putting workflow intermediate results in: {}'
               .format(self.datadir))
 
-        lvr_csv = str(self.datadir / 'LVR.csv')
-        sovc_csv = str(self.datadir / 'SOVC.csv')
-        print('Converting {} and {} to CSV'.format(lvr_excel, sovc_excel))
-        self.do_excel2csv(lvr_excel + ' ' + lvr_csv)        
-        self.do_excel2csv(sovc_excel  + ' ' + sovc_csv)        
+        #!lvr_csv = str(self.datadir / 'LVR.csv')
+        #!sovc_csv = str(self.datadir / 'SOVC.csv')
+        #!print('Converting {} and {} to CSV'.format(lvr_excel, sovc_excel))
+        #!self.do_excel2csv(lvr_excel + ' ' + lvr_csv)        
+        #!self.do_excel2csv(sovc_excel  + ' ' + sovc_csv)        
 
         print('Ingest {} into LVR.db'.format(lvr_csv))
         self.do_ingest_lvr(lvr_csv)
@@ -216,7 +229,7 @@ ORDER BY rt, ct;'''
 
         print('Tally LVR votes into LVR.db')
         self.do_tally_lvr(dummy)
-        self.do_compare_totals(str(self.datadir / 'diff.html'))
+        self.do_compare_totals(dummy)
 
     def do_quit(self, arg):
         """quit (or EOF)
