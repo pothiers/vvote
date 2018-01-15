@@ -9,10 +9,14 @@ import logging
 import sys
 import os
 import os.path
+import io
 from pathlib import PurePath
 from contextlib import contextmanager
 
+
 import cli
+
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @contextmanager
 def streamhandler_to_console(lggr):
@@ -31,9 +35,17 @@ def testcase_log_console(lggr):
         return testcase_log_console
     return testcase_decorator
 
-logger = logging.getLogger('django_test')
+logger = logging.getLogger('cli_test')
 
-
+@contextmanager
+def capture(command, *args, **kwargs):
+  out, sys.stdout = sys.stdout, io.StringIO()
+  try:
+    command(*args, **kwargs)
+    sys.stdout.seek(0)
+    yield sys.stdout.read()
+  finally:
+    sys.stdout = out
 
 class TestCli(unittest.TestCase):
     maxDiff = None # too see full values in DIFF on assert failure
@@ -55,8 +67,6 @@ class TestCli(unittest.TestCase):
         self.textfile = str(self.datadir / 'diff.txt')
 
         self.vcli=cli.VvoteShell(datadir=self.datadir)
-
-
 
     #@testcase_log_console(logger)
     def test_1ingest_lvr(self):
@@ -86,7 +96,14 @@ class TestCli(unittest.TestCase):
         #self.assertTrue(False)
         self.assertEqual(27797504,  os.path.getsize(self.lvrdb))
 
-    def test_7compare_totals(self):
+    def test_7show_tally(self):
+        with open(os.path.join(THIS_DIR,'tally.out')) as f:
+            expected = f.read()
+        with capture(self.vcli.onecmd, 'show_tally') as output:
+            #print('DBG-1',output)
+            self.assertEquals(expected, output)
+
+    def test_8compare_totals(self):
         self.vcli.onecmd('compare_totals')
         self.assertEqual(0,      os.path.getsize(self.textfile))
         self.assertEqual(170927, os.path.getsize(self.htmlfile))

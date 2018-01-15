@@ -1,11 +1,5 @@
 OBSOLETE/
-vverify.sh
-tt.sh
 foo.*
-*.clean
-*.out
-*.diff
-*.err
 
 
 venv/
