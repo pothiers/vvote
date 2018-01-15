@@ -1,5 +1,10 @@
 #! /usr/bin/env python
-"""<<Python script callable from command line.  Put description here.>>
+"""Convert Excel to CSV using openpyxl.
+Other options:
+- Gnumeric comes with "ssconvert"
+- libreoffice --headless --convert-to csv $filename(s) --outdir $outdir
+
+
 """
 # Docstrings intended for document generation via pydoc
 
@@ -11,7 +16,9 @@ from openpyxl import Workbook
 import csv
 
 def xlsx2csv(xlsx_filename, csv_filename,
-             verbose=False, transpose=False, nrows=10000):
+             verbose=True, transpose=False, nrows=10000):
+    if verbose:
+        print('# Output status every {} rows'.format(nrows))
     wb = load_workbook(filename=xlsx_filename)
     ws0 = wb.active
     wb2 = Workbook()
@@ -21,7 +28,7 @@ def xlsx2csv(xlsx_filename, csv_filename,
         ws0.max_row = ws0.max_column = None
         # unzip -p /data/mock-election/Final_Count_LVR.xlsx | grep dimension
         ws0.calculate_dimension(force=True)
-    #!print('# maxCol={}, maxRow={}'.format(ws0.max_column, ws0.max_row))
+    print('# maxCol={}, maxRow={}'.format(ws0.max_column, ws0.max_row))
 
     if transpose:
         for row in range(1,ws0.max_row+1):
@@ -36,10 +43,10 @@ def xlsx2csv(xlsx_filename, csv_filename,
         writer = csv.writer(csvfile, dialect='unix')
         ridx = 0
         for row in ws.rows:
-            ridx += 1
             if verbose:
                 if (ridx % nrows) == 0:
                     print('# processed {} ballots'.format(ridx))
+            ridx += 1
             writer.writerow([cell.value for cell in row])
 
 
@@ -53,9 +60,9 @@ def main():
         epilog='EXAMPLE: %(prog)s in.xslx out.csv'
         )
     parser.add_argument('--version', action='version', version='1.0.1')
-    parser.add_argument('xlsxfile', type=argparse.FileType('rb'),
+    parser.add_argument('xlsxfile', # type=argparse.FileType('rb'),
                         help='Excel Input filename')
-    parser.add_argument('csvfile', type=argparse.FileType('w'),
+    parser.add_argument('csvfile', # type=argparse.FileType('w'),
                         help='CSV output filename')
     parser.add_argument('-t', '--transpose',
                         action='store_true',
@@ -66,11 +73,9 @@ def main():
                                  'INFO', 'DEBUG'],
                         default='WARNING')
     args = parser.parse_args()
-    args.csvfile.close()
-    args.csvfile = args.csvfile.name
+    #!args.csvfile.close()
+    #!args.csvfile = args.csvfile.name
 
-    #!print 'My args=',args
-    #!print 'xlsxfile=',args.xlsxfile
 
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
@@ -82,7 +87,7 @@ def main():
 
     xlsx2csv(args.xlsxfile, args.csvfile,
              transpose=args.transpose,
-             verbose=False,
+             verbose=True,
              nrows=10000)
 
 if __name__ == '__main__':

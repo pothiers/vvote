@@ -22,8 +22,10 @@ from pprint import pprint,pformat
 import csv
 from collections import defaultdict
 
-from . import clean 
-from . import sql
+#!from . import clean 
+#!from . import sql
+import clean 
+import sql
 
 ##############################################################################
 ### Database

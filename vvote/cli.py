@@ -30,11 +30,17 @@ import sqlite3
 import difflib
 
 
-from .lvr_db import LvrDb
-from .lvr_count import lvr_count_and_map
-from .sovc_db import SovcDb
-from .mapping_db import MapDb
-from .xlsx2csv import xlsx2csv
+#!from .lvr_db import LvrDb
+#!from .lvr_count import lvr_count_and_map
+#!from .sovc_db import SovcDb
+#!from .mapping_db import MapDb
+#!from .xlsx2csv import xlsx2csv
+
+from lvr_db import LvrDb
+from lvr_count import lvr_count_and_map
+from sovc_db import SovcDb
+from mapping_db import MapDb
+from xlsx2csv import xlsx2csv
 
 def compare_totals(lvrdb, sovcdb, lvrtotals, sovctotals, diff):
     pass
@@ -90,6 +96,7 @@ full_workflow ~/sandbox/vvote/tests/data/day1.lvr.csv ~/sandbox/vvote/tests/data
         """excel2csv in_excel_file out_csv_file
         Convert Excel to CSV file."""
         excel_file,csv_file     = excel_csv.split()
+        print('Converting {} to {}'.format(excel_file, csv_file))
         xlsx2csv(excel_file, csv_file)
 
     # lvrdb --database $out/LVR.db --incsv $out/day9.lvr.csv
@@ -195,7 +202,7 @@ ORDER BY rt, ct;'''
 
             
     def do_full_workflow(self, lvr_sovc):
-        """full_workflow lvr_excel sovc_excel
+        """full_workflow lvr_csv sovc_csv
         Do all steps from CSV (LVR,SOVC) Input to Compare:
             ingest_lvr lvr_csv
             ingest_sovc sovc_csv

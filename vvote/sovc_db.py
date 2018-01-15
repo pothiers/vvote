@@ -21,8 +21,10 @@ import sqlite3
 from collections import defaultdict
 from pprint import pprint, pformat
 
-from . import sql
-from .sovc_sheet import SovcSheet
+#!from . import sql
+#!from .sovc_sheet import SovcSheet
+import sql
+from sovc_sheet import SovcSheet
 
 ##############################################################################
 ### Database

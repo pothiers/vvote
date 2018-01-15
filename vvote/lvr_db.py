@@ -21,8 +21,10 @@ import sqlite3
 from collections import defaultdict
 from pprint import pprint, pformat
 
-from . import sql
-from .lvr_sheet import LvrSheet
+#!from . import sql
+#!from .lvr_sheet import LvrSheet
+import sql
+from lvr_sheet import LvrSheet
 
 
 class LvrDb():
