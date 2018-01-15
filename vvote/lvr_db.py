@@ -23,8 +23,8 @@ from pprint import pprint, pformat
 
 #!from . import sql
 #!from .lvr_sheet import LvrSheet
-import sql
-from lvr_sheet import LvrSheet
+import vvote.sql
+from vvote.lvr_sheet import LvrSheet
 
 
 class LvrDb():
@@ -46,7 +46,7 @@ class LvrDb():
 
         self.conn = sqlite3.connect(dbfile)
         cur = self.conn.cursor()
-        cur.executescript(sql.lvr_schema)
+        cur.executescript(vvote.sql.lvr_schema)
         #print('Created schema in LVR database: {}'.format(dbfile))
         self.conn.commit()
 

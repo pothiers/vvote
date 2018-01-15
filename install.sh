@@ -21,4 +21,4 @@ if [ $pylintstatus -gt 0 ]; then
     exit 2
 fi
 
-python3 setup.py install --force --prefix $installprefix
+python setup.py install --force --prefix $installprefix

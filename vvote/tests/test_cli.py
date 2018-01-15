@@ -1,7 +1,7 @@
 # EXAMPLE:
 #   cd ~/sandbox/vvote/vvote
-#   python -m unittest tests.test_cli.TestCli.test_ingest_lvr
 #   python -m unittest tests/test_cli.py
+#   python -m unittest tests.test_cli.TestCli.test_ingest_sovc
 #   python -m unittest  # auto discovery
 import unittest
 import warnings
@@ -38,8 +38,14 @@ logger = logging.getLogger('django_test')
 class TestCli(unittest.TestCase):
     maxDiff = None # too see full values in DIFF on assert failure
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.datadir = PurePath(os.path.expanduser('~/.vvote-test-out'))
+        outdir = str(self.datadir)
+        os.makedirs(outdir, exist_ok=True)
+        for filename in os.listdir(outdir):
+            os.remove(os.path.join(outdir, filename))
+
         self.lvrdb = str(self.datadir / 'LVR.db')
         self.sovcdb = str(self.datadir / 'SOVC.db')
         self.mapdb = str(self.datadir / 'MAP.db')
@@ -47,11 +53,42 @@ class TestCli(unittest.TestCase):
         self.choicemap = str(self.datadir / 'CHOICEMAP.csv')
         self.htmlfile = str(self.datadir / 'diff.html')
         self.textfile = str(self.datadir / 'diff.txt')
-        os.makedirs(str(self.datadir), exist_ok=True)
+
+        self.vcli=cli.VvoteShell(datadir=self.datadir)
+
 
 
     #@testcase_log_console(logger)
-    def test_ingest_lvr(self):
-        vcli=cli.VvoteShell(datadir=self.datadir)
-        vcli.onecmd('ingest_lvr ~/sandbox/vvote/tests/data/day1.lvr.csv')
+    def test_1ingest_lvr(self):
+        self.vcli.onecmd('ingest_lvr ~/sandbox/vvote/tests/data/day1.lvr.csv')
         self.assertTrue(os.path.exists(self.lvrdb))
+
+    def test_2ingest_sovc(self):
+        self.vcli.onecmd(
+            'ingest_sovc ~/sandbox/vvote/tests/data/export1.sovc.csv')
+        self.assertTrue(os.path.exists(self.sovcdb))
+
+    def test_3create_map(self):
+        self.vcli.onecmd('create_map')
+        self.assertTrue(os.path.exists(self.mapdb))
+
+    def test_4export_maps(self):
+        self.vcli.onecmd('export_maps')
+        self.assertTrue(os.path.exists(self.racemap))
+        self.assertTrue(os.path.exists(self.choicemap))
+
+    def test_5import_maps(self):
+        self.vcli.onecmd('import_maps')
+        self.assertTrue(True) #!!!
+
+    def test_6tally_lvr(self):
+        self.vcli.onecmd('tally_lvr')
+        #self.assertTrue(False)
+        self.assertEqual(27797504,  os.path.getsize(self.lvrdb))
+
+    def test_7compare_totals(self):
+        self.vcli.onecmd('compare_totals')
+        self.assertEqual(0,      os.path.getsize(self.textfile))
+        self.assertEqual(170927, os.path.getsize(self.htmlfile))
+
+        

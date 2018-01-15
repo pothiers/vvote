@@ -24,8 +24,8 @@ from collections import defaultdict
 
 #!from . import clean 
 #!from . import sql
-import clean 
-import sql
+import vvote.clean as clean
+import vvote.sql as sql
 
 ##############################################################################
 ### Database

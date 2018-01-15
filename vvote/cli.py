@@ -36,11 +36,11 @@ import difflib
 #!from .mapping_db import MapDb
 #!from .xlsx2csv import xlsx2csv
 
-from lvr_db import LvrDb
-from lvr_count import lvr_count_and_map
-from sovc_db import SovcDb
-from mapping_db import MapDb
-from xlsx2csv import xlsx2csv
+from vvote.lvr_db import LvrDb
+from vvote.lvr_count import lvr_count_and_map
+from vvote.sovc_db import SovcDb
+from vvote.mapping_db import MapDb
+from vvote.xlsx2csv import xlsx2csv
 
 def compare_totals(lvrdb, sovcdb, lvrtotals, sovctotals, diff):
     pass

@@ -23,8 +23,8 @@ from pprint import pprint, pformat
 
 #!from . import sql
 #!from .sovc_sheet import SovcSheet
-import sql
-from sovc_sheet import SovcSheet
+import vvote.sql as sql
+from vvote.sovc_sheet import SovcSheet
 
 ##############################################################################
 ### Database
