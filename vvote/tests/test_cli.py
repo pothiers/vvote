@@ -13,7 +13,6 @@ import io
 from pathlib import PurePath
 from contextlib import contextmanager
 
-
 import cli
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,6 +36,7 @@ def testcase_log_console(lggr):
 
 logger = logging.getLogger('cli_test')
 
+# capture Standard Output to string (available as context variable)
 @contextmanager
 def capture(command, *args, **kwargs):
   out, sys.stdout = sys.stdout, io.StringIO()
