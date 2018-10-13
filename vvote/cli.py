@@ -28,6 +28,7 @@ import os.path
 from pathlib import PurePath
 import sqlite3
 import difflib
+import traceback
 
 
 #!from .lvr_db import LvrDb
@@ -80,6 +81,7 @@ full_workflow ~/sandbox/vvote/tests/data/day1.lvr.csv ~/sandbox/vvote/tests/data
                 sys.stdout.write('\n')
             except Exception as err:
                 print('ERROR in command: {}\n'.format(err))
+                traceback.print_exc()
                 
     def precmd(self, line):
         if self.echo:
