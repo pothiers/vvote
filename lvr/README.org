@@ -1,0 +1,21 @@
+This is stripped down code to import LVR files in CSV format (often
+"*CVR*.csv) into an SQLITE database.
+
+
+*** Specifications and definitions
+- CVR :: Cast Vote Record, election system ballot interpretation (for
+     one ballot)
+- LVR :: List of CVR records (an excel file, each row is CVR except
+     header row=1)
+- undervote :: label used in Excel LVR file for all the choices that
+     were not made on the ballot. If the ballot said "Vote for not
+     more than three", and only one candiate was chosen, there would
+     be two "undervote" values.
+- overvote :: if more than max number of choices made, the ballot is
+     not counted and is not in the LVR file.
+- Write-in :: label used in LVR where the original ballot had a
+     write-in value
+- blank cell :: voter not able to vote in that contest (out of
+     district, or fed-only voter)
+
+

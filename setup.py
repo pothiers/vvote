@@ -64,7 +64,7 @@ setup(
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
     #! packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
-    packages=['vvote'],
+    packages=['vvote', 'lvr'],
 
     # List run-time dependencies here.  These will be installed by pip when your
     # project is installed. For an analysis of "install_requires" vs pip's
@@ -96,12 +96,18 @@ setup(
             #'compare=vvote.comparesovc:main',
 
             'xls2csv=vvote.xlsx2csv:main',
-            'lvrdb=vvote.lvr_db:main',
-            'lvrcnt=vvote.lvr_count:main',
-            'lvr2csv=vvote.lvr_db_csv:main',
+
+            #!'lvrdb=vvote.lvr_db:main',
+            #!'lvrcnt=vvote.lvr_count:main',
+            #!'lvr2csv=vvote.lvr_db_csv:main',
+            'lvrdb=lvr.lvr_db:main',
+            'lvrcnt=lvr.lvr_count:main',
+            'lvr2csv=lvr.lvr_db_csv:main',
+
             'sovcdb=vvote.sovc_db:main',
             'makemapdb=vvote.mapping_db:main',
             'cli=vvote.cli:main',
+            'loadelection=vvote.election_db:main',
         ],
     },
 )

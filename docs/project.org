@@ -1,6 +1,39 @@
 * Overview
 Project to count votes in a mock-election.
 
+* <2018-10-13 Sat> Next effort
+** Results given to us from Primary2018
+1. 180828_EXPORT-8-21.CSV
+2. 180828_EXPORT-8-27.CSV
+3. 180828_EXPORT-8-28.CSV
+4. 180828_EXPORT-8-29.CSV
+5. 180828_EXPORT-8-30.CSV
+6. 180828_EXPORT-9-2.CSV
+7. P-2018 CRV - 0.xlsx
+8. P-2018 CRV - 1.xlsx
+9. P-2018 CRV - 2.xlsx
+10. P-2018 POST ELECTION SYSTEM LOG
+
+For the above results, 
+  + 1-6 are SOVC files; count of votes per race
+  + 7-9 are CVR (misnamed); Results from each ballot.  These are the
+    big files.  They are the closest we get to "raw"
+    results. Sometimes we rever to these files as "LVR" (List of CVR,
+    I think)
+    
+** Workflow
+Given a set of files representing results (including vote counts) as
+in above "Results" section:
+1. Convert each CVR file from excel to CSV
+2. Import all CVR files (from CSV format) into ElectionDB.
+3. Run count to get something like the CVR files.
+4. Import all CVR files into DB. (include generating maps)
+5. (modify MAPS if needed)
+6. Report on comparison between given CVR Counts and Calculated Counts.
+
+Steps 4-6 might not be worth the effort. Do we really think they count
+things wrong?  Pothier thinks this is VERY unlikely.
+
 * Rules/assumptions
 Everything is derived from LVR.
 1. "Issue" (each issue voted on)

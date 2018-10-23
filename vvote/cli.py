@@ -37,10 +37,11 @@ import traceback
 #!from .mapping_db import MapDb
 #!from .xlsx2csv import xlsx2csv
 
-from vvote.lvr_db import LvrDb
+#!from vvote.lvr_db import LvrDb
+#!from vvote.sovc_db import SovcDb
+#!from vvote.mapping_db import MapDb
+from vvote.election_db import ElectionDb
 from vvote.lvr_count import lvr_count_and_map
-from vvote.sovc_db import SovcDb
-from vvote.mapping_db import MapDb
 from vvote.xlsx2csv import xlsx2csv
 
 def compare_totals(lvrdb, sovcdb, lvrtotals, sovctotals, diff):
@@ -60,9 +61,12 @@ full_workflow ~/sandbox/vvote/tests/data/day1.lvr.csv ~/sandbox/vvote/tests/data
     def __init__(self, echo=False, datadir='~/.vvote'):
         self.echo = echo
         self.datadir = PurePath(os.path.expanduser(datadir))
-        self.lvrdb = str(self.datadir / 'LVR.db')
-        self.sovcdb = str(self.datadir / 'SOVC.db')
-        self.mapdb = str(self.datadir / 'MAP.db')
+
+        #!self.lvrdb = str(self.datadir / 'LVR.db')
+        #!self.sovcdb = str(self.datadir / 'SOVC.db')
+        #!self.mapdb = str(self.datadir / 'MAP.db')
+        self.electiondb = str(self.datadir / 'ELECTION.db')
+
         self.racemap = str(self.datadir / 'RACEMAP.csv')
         self.choicemap = str(self.datadir / 'CHOICEMAP.csv')
         self.htmlfile = str(self.datadir / 'diff.html')
@@ -102,106 +106,114 @@ full_workflow ~/sandbox/vvote/tests/data/day1.lvr.csv ~/sandbox/vvote/tests/data
         xlsx2csv(excel_file, csv_file)
 
     # lvrdb --database $out/LVR.db --incsv $out/day9.lvr.csv
+    #! def do_ingest_lvr(self, lvr_csv):
+    #!     """ingest_lvr lvr_csv
+    #!     Ingest LVR CSV file into its own sqlite database."""
+    #!     db = LvrDb(self.lvrdb)
+    #!     csv = os.path.expanduser(lvr_csv)
+    #!     print('Ingesting CSV file ({}) into database ({})'
+    #!           .format(csv, self.lvrdb))
+    #!     db.insert_from_csv(csv)
     def do_ingest_lvr(self, lvr_csv):
         """ingest_lvr lvr_csv
         Ingest LVR CSV file into its own sqlite database."""
-        db = LvrDb(self.lvrdb)
+        db = ElectionDb(self.electiondb)
         csv = os.path.expanduser(lvr_csv)
         print('Ingesting CSV file ({}) into database ({})'
-              .format(csv, self.lvrdb))
-        db.insert_from_csv(csv)
+              .format(csv, self.electiondb))
+        db.insert_LVR_from_csv(csv)
         
-    # sovcdb --database $out/SOVC.db --incsv $out/export9.sovc.csv 
-    def do_ingest_sovc(self, sovc_csv):
-        """ingest_sovc sovc_csv
-        Ingest SOVC CSV file into its own sqlite database."""
-        db = SovcDb(self.sovcdb)
-        db.insert_from_csv(os.path.expanduser(sovc_csv))
-
-
-    # makemapdb --new -l $out/LVR.db -s $out/SOVC.db --mapdb $out/MAP.db 
-    # makemapdb -m $out/MAP.db --calc
-    def do_create_map(self, arg):
-        """create_map
-        Create mapping from LVR to SOVC names (for Races and Choices)"""
-        mdb = MapDb(self.mapdb, new=True)
-        mdb.get_lvr_luts(self.lvrdb)
-        mdb.get_sovc_luts(self.sovcdb)
-        mdb.calc()
-
-
-    # makemapdb -m $out/MAP.db --export
-    def do_export_maps(self, arg):
-        """export_maps
-        Export Race and Choice maps for possible editing."""
-        mdb = MapDb(self.mapdb, new=False)
-        mdb.export(racemap_csv=self.racemap, choicemap_csv=self.choicemap)
-
-
-    # makemapdb -m $out/MAP.db --import RACEMAP.csv CHOICEMAP.csv
-    def do_import_maps(self, arg):
-        """import_maps
-        Import edited Race and Choice maps."""
-
-        mdb = MapDb(self.mapdb, new=False)
-        mdb.load_maps(self.racemap, self.choicemap)
-
-    # lvrcnt --lvr $out/LVR.db --map $out/MAP.db
-    def do_tally_lvr(self, arg):
-        """tally_lvr
-        Count votes in LVR database. Store back in database using SOVC names."""
-        print('Inserting summary of votes into LVR db. (slow)')
-        lvr_count_and_map(self.lvrdb, self.mapdb)
-
-    def do_show_tally(self, arg):
-        """show_tally
-        Display previously computed tally ("tally_lvr") of LVR votes."""
-        cur = sqlite3.connect(self.lvrdb).cursor()
-        print('{}\t{}\t{}'.format('Race','Choice','Votes'))
-        for (race,choice,votes) in cur.execute('SELECT * FROM summary_totals;'):
-            print('{}\t{}\t{}'.format(race,choice,votes))
-
-
-    # ~/sandbox/vvote/scripts/compare.sh
-    def do_compare_totals(self, arg):
-        """compare_totals 
-        Compare total votes from LVR to SOVC."""
-        sql_lvr = '''SELECT * FROM summary_totals ORDER BY race,choice;'''
-        sql_sovc = '''SELECT 
-  race.title as rt, 
-  choice.title as ct,
-  vote.count as votes
-FROM vote, choice, race
-WHERE 
-  vote.choice_id = choice.choice_id 
-  AND choice.race_id = race.race_id
-  AND vote.precinct_code = \'ZZZ\'
-GROUP BY rt, ct
-ORDER BY rt, ct;'''
-
-        cur = sqlite3.connect(self.lvrdb).cursor()
-        cur.execute(sql_lvr)
-        fromlines =  [str(tup) for tup in cur.fetchall()]
-        
-        cur2 = sqlite3.connect(self.sovcdb).cursor()
-        cur2.execute(sql_sovc)
-        tolines =  [str(tup) for tup in cur2.fetchall()]
-
-        hd = difflib.HtmlDiff()
-        html = hd.make_file(fromlines, tolines, fromdesc='LVR', todesc='SOVR')
-        with open(self.htmlfile, mode='w') as f:
-            print(html, file=f)
-        print('Wrote full differences to HTML at: {}'.format(self.htmlfile))
-
-        dif = difflib.Differ()
-        with open(self.textfile, mode='w') as f:
-            for line in dif.compare(fromlines,tolines):
-                if line.startswith('  '): continue
-                if line.startswith('? '): continue
-                if line.endswith(', 0)'): continue
-                print(line, file=f)
-        print('Wrote delta differences to TEXT at: {}'.format(self.textfile))
-
+#!    # sovcdb --database $out/SOVC.db --incsv $out/export9.sovc.csv 
+#!    def do_ingest_sovc(self, sovc_csv):
+#!        """ingest_sovc sovc_csv
+#!        Ingest SOVC CSV file into its own sqlite database."""
+#!        db = SovcDb(self.sovcdb)
+#!        db.insert_from_csv(os.path.expanduser(sovc_csv))
+#!
+#!
+#!    # makemapdb --new -l $out/LVR.db -s $out/SOVC.db --mapdb $out/MAP.db 
+#!    # makemapdb -m $out/MAP.db --calc
+#!    def do_create_map(self, arg):
+#!        """create_map
+#!        Create mapping from LVR to SOVC names (for Races and Choices)"""
+#!        mdb = MapDb(self.mapdb, new=True)
+#!        mdb.get_lvr_luts(self.lvrdb)
+#!        mdb.get_sovc_luts(self.sovcdb)
+#!        mdb.calc()
+#!
+#!
+#!    # makemapdb -m $out/MAP.db --export
+#!    def do_export_maps(self, arg):
+#!        """export_maps
+#!        Export Race and Choice maps for possible editing."""
+#!        mdb = MapDb(self.mapdb, new=False)
+#!        mdb.export(racemap_csv=self.racemap, choicemap_csv=self.choicemap)
+#!
+#!
+#!    # makemapdb -m $out/MAP.db --import RACEMAP.csv CHOICEMAP.csv
+#!    def do_import_maps(self, arg):
+#!        """import_maps
+#!        Import edited Race and Choice maps."""
+#!
+#!        mdb = MapDb(self.mapdb, new=False)
+#!        mdb.load_maps(self.racemap, self.choicemap)
+#!
+#!    # lvrcnt --lvr $out/LVR.db --map $out/MAP.db
+#!    def do_tally_lvr(self, arg):
+#!        """tally_lvr
+#!        Count votes in LVR database. Store back in database using SOVC names."""
+#!        print('Inserting summary of votes into LVR db. (slow)')
+#!        lvr_count_and_map(self.lvrdb, self.mapdb)
+#!
+#!    def do_show_tally(self, arg):
+#!        """show_tally
+#!        Display previously computed tally ("tally_lvr") of LVR votes."""
+#!        cur = sqlite3.connect(self.lvrdb).cursor()
+#!        print('{}\t{}\t{}'.format('Race','Choice','Votes'))
+#!        for (race,choice,votes) in cur.execute('SELECT * FROM summary_totals;'):
+#!            print('{}\t{}\t{}'.format(race,choice,votes))
+#!
+#!
+#!    # ~/sandbox/vvote/scripts/compare.sh
+#!    def do_compare_totals(self, arg):
+#!        """compare_totals 
+#!        Compare total votes from LVR to SOVC."""
+#!        sql_lvr = '''SELECT * FROM summary_totals ORDER BY race,choice;'''
+#!        sql_sovc = '''SELECT 
+#!  race.title as rt, 
+#!  choice.title as ct,
+#!  vote.count as votes
+#!FROM vote, choice, race
+#!WHERE 
+#!  vote.choice_id = choice.choice_id 
+#!  AND choice.race_id = race.race_id
+#!  AND vote.precinct_code = \'ZZZ\'
+#!GROUP BY rt, ct
+#!ORDER BY rt, ct;'''
+#!
+#!        cur = sqlite3.connect(self.lvrdb).cursor()
+#!        cur.execute(sql_lvr)
+#!        fromlines =  [str(tup) for tup in cur.fetchall()]
+#!        
+#!        cur2 = sqlite3.connect(self.sovcdb).cursor()
+#!        cur2.execute(sql_sovc)
+#!        tolines =  [str(tup) for tup in cur2.fetchall()]
+#!
+#!        hd = difflib.HtmlDiff()
+#!        html = hd.make_file(fromlines, tolines, fromdesc='LVR', todesc='SOVR')
+#!        with open(self.htmlfile, mode='w') as f:
+#!            print(html, file=f)
+#!        print('Wrote full differences to HTML at: {}'.format(self.htmlfile))
+#!
+#!        dif = difflib.Differ()
+#!        with open(self.textfile, mode='w') as f:
+#!            for line in dif.compare(fromlines,tolines):
+#!                if line.startswith('  '): continue
+#!                if line.startswith('? '): continue
+#!                if line.endswith(', 0)'): continue
+#!                print(line, file=f)
+#!        print('Wrote delta differences to TEXT at: {}'.format(self.textfile))
+#!
             
     def do_full_workflow(self, lvr_sovc):
         """full_workflow lvr_csv sovc_csv
@@ -221,24 +233,24 @@ ORDER BY rt, ct;'''
         print('Putting workflow intermediate results in: {}'
               .format(self.datadir))
 
-        #!lvr_csv = str(self.datadir / 'LVR.csv')
-        #!sovc_csv = str(self.datadir / 'SOVC.csv')
-        #!print('Converting {} and {} to CSV'.format(lvr_excel, sovc_excel))
-        #!self.do_excel2csv(lvr_excel + ' ' + lvr_csv)        
-        #!self.do_excel2csv(sovc_excel  + ' ' + sovc_csv)        
+        #!! lvr_csv = str(self.datadir / 'LVR.csv')
+        #!! sovc_csv = str(self.datadir / 'SOVC.csv')
+        #!! print('Converting {} and {} to CSV'.format(lvr_excel, sovc_excel))
+        #!! self.do_excel2csv(lvr_excel + ' ' + lvr_csv)        
+        #!! self.do_excel2csv(sovc_excel  + ' ' + sovc_csv)        
 
         print('Ingest {} into LVR.db'.format(lvr_csv))
         self.do_ingest_lvr(lvr_csv)
-        print('Ingest {} into SOVC.db'.format(sovc_csv))
-        self.do_ingest_sovc(sovc_csv)
-
-        self.do_create_map(dummy)
-        self.do_export_maps(dummy)
-        self.do_import_maps(dummy)
-
-        print('Tally LVR votes into LVR.db')
-        self.do_tally_lvr(dummy)
-        self.do_compare_totals(dummy)
+        #!print('Ingest {} into SOVC.db'.format(sovc_csv))
+        #!self.do_ingest_sovc(sovc_csv)
+        #!
+        #!self.do_create_map(dummy)
+        #!self.do_export_maps(dummy)
+        #!self.do_import_maps(dummy)
+        #!
+        #!print('Tally LVR votes into LVR.db')
+        #!self.do_tally_lvr(dummy)
+        #!self.do_compare_totals(dummy)
 
     def do_quit(self, arg):
         """quit (or EOF)
