@@ -33,7 +33,7 @@ import fileinput
 #################
 ## LOCAL packages
 import lvr.sql as sql
-from lvr.lvr_sheet import LvrSheet
+#!from lvr.lvr_sheet import LvrSheet
 
 summary_msg = '''
 LVR Database Summary:
