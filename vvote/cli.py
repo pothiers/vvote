@@ -117,10 +117,11 @@ full_workflow ~/sandbox/vvote/tests/data/day1.lvr.csv ~/sandbox/vvote/tests/data
     def do_ingest_lvr(self, lvr_csv):
         """ingest_lvr lvr_csv
         Ingest LVR CSV file into its own sqlite database."""
-        db = ElectionDb(self.electiondb)
+        db = LvrDb(self.lvrdb)
+        #!db = ElectionDb(self.electiondb)
         csv = os.path.expanduser(lvr_csv)
         print('Ingesting CSV file ({}) into database ({})'
-              .format(csv, self.electiondb))
+              .format(csv, self.lvrdb))
         db.insert_LVR_from_csv(csv)
         
 #!    # sovcdb --database $out/SOVC.db --incsv $out/export9.sovc.csv 
