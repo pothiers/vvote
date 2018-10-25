@@ -58,7 +58,7 @@ report=${1:-$HOME/logs/foo.report}
 #! for arg do echo '--> '"\`$arg'" ; done
 ##############################################################################
 
-DBFILE="ELECTION.db"
+DBFILE="LVR.db"
 lvrFiles=(/data/vvote/Elections/Primary2018/PCE/vv/P*.csv)
 filecnt=${#lvrFiles[@]}
 last=`wc -l ${lvrFiles[@]} | tail -1 `

@@ -16,8 +16,9 @@ import sqlite3
 from pprint import pprint,pformat
 #!from .mapping_db import MapDb
 #!from . import sql
-from vvote.mapping_db import MapDb
-import vvote.sql as sql
+#!from vvote.mapping_db import MapDb
+
+import lvr.sql as sql
     
 def lvr_count_and_map(lvrdb, mapdb):
     """Count total votes in LVR (per choice), map to SOVC names."""
@@ -60,9 +61,6 @@ def main():
     parser.add_argument('--version', action='version', version='1.0.1')
     parser.add_argument('--lvrdb', '-l',
                         help='LVR sqlite DB')
-    parser.add_argument('--mapdb', '-m', 
-                        default=dfmdb,
-                        help='MAP sqlite DB')
     parser.add_argument('--totals', '-t', 
                         default=dftot,
                         help='CSV of total votes in LVR (mapped to SOVC names)')
