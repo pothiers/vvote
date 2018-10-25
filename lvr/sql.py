@@ -45,19 +45,9 @@ WHERE
      vote.choice_id = choice.choice_id
  AND choice.title = ?;
 '''
-##  Reports count that is TOO HIGH
+##  ok
 # SELECT count(vote.cvr_id) FROM vote,choice WHERE vote.choice_id = choice.choice_id AND choice.title = "ABBOUD, DEEDRA";
 
-count_race = '''
-SELECT 
-   count(vote.cvr_id) 
-FROM
-   vote, choice, race
-WHERE
-     vote.choice_id = choice.choice_id
- AND race.race_id = choice.race_id
- AND race.title = ?;
-'''
 
 choices_in_race = '''
 SELECT 
@@ -68,7 +58,7 @@ WHERE
      choice.race_id = race.race_id
  AND race.title = ?;
 '''
-### Looks good:
+### ok
 # SELECT race.title, choice.title FROM choice,race WHERE choice.race_id = race.race_id AND race.title = "U.S. SENATOR DEM";
 
 count_by_Xrace_by_choice = '''
@@ -79,7 +69,14 @@ WHERE vote.choice_id = choice.choice_id
   AND race.title = ?
 GROUP BY choice.choice_id;
 '''
+# good EXCEPT "Write-in" is low
 
 
 # COUNT per RACE per CANDIDATE
+#   spotcheck look good EXCEPT "Write-in" is low
+#   File contains what looks like images for write-ins in some places
+#     AND "Write-in" as text in others.
 # sqlite3 -header -column LVR.db 'SELECT count(vote.cvr_id), race.title as "rTitle", choice.title as "cTitle" FROM vote,choice,race WHERE vote.choice_id = choice.choice_id AND choice.race_id = race.race_id GROUP BY race.column, choice.choice_id;'
+
+# All Races, All Candidates, by SELECTED Precinct 
+# SELECT count(vote.cvr_id), cvr.precinct as Precinct, race.title as "rTitle", choice.title as "cTitle" FROM vote,choice,race,cvr WHERE vote.choice_id = choice.choice_id AND choice.race_id = race.race_id AND vote.cvr_id = cvr.cvr_id AND cvr.precinct = 249 GROUP BY race.column, choice.choice_id;

@@ -90,7 +90,6 @@ class LvrDb():
                                  ','.join([str(v) for v in va_choice_list]),  ))
 
     def insertRaces(self, fieldnames):
-        print('DBG: insertRaces();{}'.format(fieldnames))
         left = self.minDataC
         for column,racename in enumerate(fieldnames[left:],left):
             if len(racename.strip()) == 0:
@@ -160,6 +159,8 @@ class LvrDb():
                     
                 datarow = row[self.minDataC:]
                 for (column, choice_title) in enumerate(datarow,self.minDataC):
+                    if len(choice_title.strip()) == 0:
+                        continue
                     try:
                         race_id = self.raceColLut[column]
                     except:
