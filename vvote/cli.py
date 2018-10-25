@@ -37,10 +37,10 @@ import traceback
 #!from .mapping_db import MapDb
 #!from .xlsx2csv import xlsx2csv
 
-#!from vvote.lvr_db import LvrDb
-#!from vvote.sovc_db import SovcDb
-#!from vvote.mapping_db import MapDb
-from vvote.election_db import ElectionDb
+from vvote.lvr_db import LvrDb
+from vvote.sovc_db import SovcDb
+from vvote.mapping_db import MapDb
+#!from vvote.election_db import ElectionDb
 from vvote.lvr_count import lvr_count_and_map
 from vvote.xlsx2csv import xlsx2csv
 
@@ -62,10 +62,10 @@ full_workflow ~/sandbox/vvote/tests/data/day1.lvr.csv ~/sandbox/vvote/tests/data
         self.echo = echo
         self.datadir = PurePath(os.path.expanduser(datadir))
 
-        #!self.lvrdb = str(self.datadir / 'LVR.db')
-        #!self.sovcdb = str(self.datadir / 'SOVC.db')
-        #!self.mapdb = str(self.datadir / 'MAP.db')
-        self.electiondb = str(self.datadir / 'ELECTION.db')
+        self.lvrdb = str(self.datadir / 'LVR.db')
+        self.sovcdb = str(self.datadir / 'SOVC.db')
+        self.mapdb = str(self.datadir / 'MAP.db')
+        #!self.electiondb = str(self.datadir / 'ELECTION.db')
 
         self.racemap = str(self.datadir / 'RACEMAP.csv')
         self.choicemap = str(self.datadir / 'CHOICEMAP.csv')
