@@ -104,10 +104,10 @@ setup(
             'lvrcnt=lvr.lvr_count:main',
             'lvr2csv=lvr.lvr_db_csv:main',
 
-            'sovcdb=vvote.sovc_db:main',
-            'makemapdb=vvote.mapping_db:main',
-            'cli=vvote.cli:main',
-            'loadelection=vvote.election_db:main',
+            #!'sovcdb=vvote.sovc_db:main',
+            #!'makemapdb=vvote.mapping_db:main',
+            #!'cli=vvote.cli:main',
+            #!'loadelection=vvote.election_db:main',
         ],
     },
 )
