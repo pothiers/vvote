@@ -3,8 +3,11 @@ SQL commands used in the python code.
 All tables in single SQLITE file (for one election).
 """
 
-lvr_schema = '''
+##############################################################################
+### Schema
+###
 
+lvr_schema = '''
 CREATE TABLE source (
    filename text -- e.g LVR: P-2018-CRV-2.csv
 );
@@ -32,8 +35,26 @@ CREATE TABLE vote (
 );
 '''
 
-race_lut = 'SELECT race_id, title, column, num_to_vote_for FROM race;'
+
+##############################################################################
+### Queries
+###
+
+
+race_lut = 'SELECT race_id, title, column, num_to_vote_for FROM race ORDER BY column;'
 choice_lut = 'SELECT choice_id, title, race_id, party FROM choice;'
+
+votecvr = '''
+SELECT cvr.cvr_id as cid, 
+       cvr.precinct as pc, 
+       cvr.ballot_style as ball,
+       choice.title as ct, 
+       choice.race_id as rid
+FROM choice, cvr, vote
+WHERE vote.cvr_id = cvr.cvr_id AND vote.choice_id = choice.choice_id
+ORDER BY   vote.cvr_id ASC, choice.race_id ASC;'''
+    
+
 
 # c.execute(count_candidate, choice_title)
 count_candidate = '''
@@ -71,6 +92,17 @@ GROUP BY choice.choice_id;
 '''
 # good EXCEPT "Write-in" is low
 
+count_by_precinct = '''
+SELECT count(vote.cvr_id) as Votes, 
+       cvr.precinct as Precinct, 
+       race.title as Race, 
+       choice.title as Choice
+ FROM vote,choice,race,cvr 
+WHERE vote.choice_id = choice.choice_id 
+  AND choice.race_id = race.race_id 
+  AND vote.cvr_id = cvr.cvr_id 
+GROUP BY cvr.precinct, race.column, choice.choice_id;
+'''
 
 # COUNT per RACE per CANDIDATE
 #   spotcheck look good EXCEPT "Write-in" is low
