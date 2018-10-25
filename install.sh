@@ -1,11 +1,14 @@
 #!/bin/bash
 
-installprefix=~/sandbox/vvote/venv
-repodir=${1:-$HOME/sandbox}
+SCRIPT=$(readlink -f $0)        # Absolute path to this script
+SCRIPTPATH=$(dirname $SCRIPT)   # Absolute path this script is in
 
-pushd $repodir/vvote > /dev/null
-source ~/sandbox/vvote/venv/bin/activate
-pip install -r ~/sandbox/vvote/requirements.txt
+PROJDIR=$SCRIPTPATH
+installprefix="$PROJDIR/venv"
+
+pushd $PROJDIR > /dev/null
+source $PROJDIR/venv/bin/activate
+pip install -r $PROJDIR/requirements.txt
 pylint -E vvote/
 pylintstatus=$?
 if [ $pylintstatus -eq 1 ]; then
