@@ -1,7 +1,8 @@
 #!/bin/bash -e
 
-SCRIPT=$(readlink -f $0)        # Absolute path to this script
-SCRIPTPATH=$(dirname $SCRIPT)   # Absolute path this script is in
+#!SCRIPT=$(readlink -f $0)        # Absolute path to this script
+#!SCRIPTPATH=$(dirname $SCRIPT)   # Absolute path this script is in
+SCRIPTPATH=`dirname $0`  # works on MacOS, I hope
 
 PROJDIR=$SCRIPTPATH
 installprefix="$PROJDIR/venv"

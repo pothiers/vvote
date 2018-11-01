@@ -41,18 +41,18 @@ CREATE TABLE vote (
 ###
 
 
-race_lut = 'SELECT race_id, title, column, num_to_vote_for FROM race ORDER BY column;'
+race_lut = 'SELECT race_id, title, column, num_to_vote_for FROM race;'
 choice_lut = 'SELECT choice_id, title, race_id, party FROM choice;'
 
-votecvr = '''
-SELECT cvr.cvr_id as cid, 
-       cvr.precinct as pc, 
-       cvr.ballot_style as ball,
-       choice.title as ct, 
-       choice.race_id as rid
-FROM choice, cvr, vote
-WHERE vote.cvr_id = cvr.cvr_id AND vote.choice_id = choice.choice_id
-ORDER BY   vote.cvr_id ASC, choice.race_id ASC;'''
+#! votecvr = '''
+#! SELECT cvr.cvr_id as cid, 
+#!        cvr.precinct as pc, 
+#!        cvr.ballot_style as ball,
+#!        choice.title as ct, 
+#!        choice.race_id as rid
+#! FROM choice, cvr, vote
+#! WHERE vote.cvr_id = cvr.cvr_id AND vote.choice_id = choice.choice_id
+#! ORDER BY   vote.cvr_id ASC, choice.race_id ASC;'''
     
 
 
