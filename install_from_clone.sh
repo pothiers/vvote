@@ -4,7 +4,7 @@
 # Requirements:
 #   python3
 #
-SCRIPT=$(readlink -f $0)        # Absolute path to this script
+SCRIPT=$(greadlink -f $0)        # Absolute path to this script
 repodir=$(dirname $SCRIPT)   # Absolute path this script is in
 
 installprefix=$repodir/venv
