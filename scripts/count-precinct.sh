@@ -66,7 +66,7 @@ FROM vote,choice,race,cvr
 WHERE vote.choice_id = choice.choice_id 
   AND choice.race_id = race.race_id 
   AND vote.cvr_id = cvr.cvr_id 
-  AND cvr.precinct = $PRECINCT
+  AND cvr.precinct = '$PRECINCT'
 GROUP BY race.column, choice.choice_id;"
 
 sqlite3 -header -column $DB "$SQL"

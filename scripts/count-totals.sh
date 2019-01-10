@@ -7,7 +7,6 @@
 SCRIPT=$(greadlink -f $0)        # Absolute path to this script
 SCRIPTPATH=$(dirname $SCRIPT)   # Absolute path this script is in
 
-
 VERBOSE=0
 DB="LVR.db"
 
@@ -40,7 +39,6 @@ while getopts "d:hv:" opt; do
             ;;
     esac
 done
-#echo "OPTIND=$OPTIND"
 for (( x=1; x<$OPTIND; x++ )); do shift; done
 
 RAC=0 # Required Argument Count
@@ -50,12 +48,6 @@ if [ $# -lt $RAC ]; then
     exit 2
 fi
 
-report=${1:-$HOME/logs/foo.report}
-
-#! echo "PROGRESS=$PROGRESS"
-#! echo "VERBOSE=$VERBOSE"
-#! echo "Remaining arguments:"
-#! for arg do echo '--> '"\`$arg'" ; done
 ##############################################################################
 
 echo "COUNTING: total votes for All Choices, ALL Races"
