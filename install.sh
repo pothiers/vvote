@@ -1,5 +1,6 @@
 #!/bin/bash -e
-
+# For non-macOS:
+#   sudo ln -s /bin/readlink /bin/greadlink
 SCRIPT=$(greadlink -f $0)        # Absolute path to this script
 SCRIPTPATH=$(dirname $SCRIPT)   # Absolute path this script is in
 #!SCRIPTPATH=`dirname $0`  # works on MacOS, I hope
