@@ -101,7 +101,7 @@ class TestCli(unittest.TestCase):
             expected = f.read()
         with capture(self.vcli.onecmd, 'show_tally') as output:
             #print('DBG-1',output)
-            self.assertEquals(expected, output)
+            self.assertEqual(expected, output)
 
     def test_8compare_totals(self):
         self.vcli.onecmd('compare_totals')

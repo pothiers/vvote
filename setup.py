@@ -106,7 +106,7 @@ setup(
 
             #!'sovcdb=vvote.sovc_db:main',
             #!'makemapdb=vvote.mapping_db:main',
-            #!'cli=vvote.cli:main',
+            'cli=vvote.cli:main',
             #!'loadelection=vvote.election_db:main',
         ],
     },
