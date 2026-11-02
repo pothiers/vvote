@@ -9,6 +9,6 @@
 #openpyxl==2.5.8
 openpyxl==3.0.5
 #pylint==2.1.1
-pylint==2.6.0
+pylint==4.0.9
 #!six==1.11.0
 
